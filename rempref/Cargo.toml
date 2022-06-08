@@ -1,0 +1,8 @@
+[package]
+name = "rempref"
+version = "0.1.0"
+edition = "2021"
+authors = ["Attila Szőke"]
+description = "A file prefix removal utility"
+
+[dependencies]
