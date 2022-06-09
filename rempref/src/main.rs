@@ -1,3 +1,5 @@
+use std::{collections::HashMap, fs, path::MAIN_SEPARATOR};
+
 use glob::glob;
 use structopt::StructOpt;
 
@@ -38,14 +40,26 @@ fn main() {
         .iter()
         .filter(|file| file.is_file())
         .collect::<Vec<_>>();
+
     let prefix_count = args.chars.into();
-    let files_str = files
+    let result_map = files
         .iter()
         .map(|file| format!("{}", file.display()))
-        .map(|file| format!("{} -> {}", file, &file[prefix_count..]))
-        .collect::<Vec<_>>();
+        .map(|file| {
+            let mut path = file.split(MAIN_SEPARATOR).collect::<Vec<_>>();
+            let last_part = &path.remove(path.len() - 1)[prefix_count..];
+            path.push(last_part);
+            (file.clone(), path.join(MAIN_SEPARATOR.to_string().as_str()))
+        })
+        .collect::<HashMap<_, _>>();
 
-    println!("{}", files_str.join("\n"));
+    for (from, to) in &result_map {
+        println!("{} -> {}", from, to);
+    }
 
-    if args.modify {}
+    if args.modify {
+        for (from, to) in result_map {
+            fs::rename(from, to).expect("Rename failed!");
+        }
+    }
 }
