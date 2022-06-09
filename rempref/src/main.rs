@@ -1,65 +1,49 @@
-use std::{collections::HashMap, fs, path::MAIN_SEPARATOR};
-
+use cli::Args;
 use glob::glob;
+use std::{fs, path::PathBuf};
 use structopt::StructOpt;
+use task::RemovePrefixTask;
 
-#[derive(Debug, StructOpt)]
-#[structopt(name = "rempref", about = "A file prefix removal utility.")]
-struct Args {
-    // debug: bool,
-    #[structopt(short, long)]
-    modify: bool,
-    #[structopt(short, long)]
-    chars: u8,
-    // extensions: Option<Vec<String>>,
-    // pattern: Option<String>,
-    // recursive: bool,
-    // show_similarities: bool
-    // path: Option<PathBuf>
-}
+mod cli;
+mod task;
 
 fn main() {
     let args = Args::from_args();
+    let working_dir = get_working_dir();
+    let files = read_files(format!("{}/*", working_dir));
+    let tasks = files
+        .iter()
+        .map(|file| (args.prefix_len, file.display().to_string()).into())
+        .collect::<Vec<RemovePrefixTask>>();
+    for task in &tasks {
+        println!("{}", task);
+    }
+    if args.modify {
+        for task in tasks {
+            fs::rename(task.from, task.to).expect("Rename failed!");
+        }
+    }
+}
 
-    let working_dir =
-        std::env::current_dir().expect("Permission denied or current directory does no exist");
-    let working_dir = working_dir
+fn get_working_dir() -> String {
+    std::env::current_dir()
+        .expect("Permission denied or current directory does not exist")
         .into_os_string()
         .into_string()
-        .expect("Current directory string invalid");
+        .expect("Current directory string is invalid")
+}
 
-    let glob_pattern = format!("{}/*", working_dir);
+fn read_files(glob_pattern: String) -> Vec<PathBuf> {
     let mut files = vec![];
     for entry in glob(&glob_pattern).expect("Failed to read glob pattern") {
         match entry {
-            Ok(path) => files.push(path),
+            Ok(path) => {
+                if path.is_file() {
+                    files.push(path);
+                }
+            }
             Err(e) => println!("{e}"),
         }
     }
-    let files = files
-        .iter()
-        .filter(|file| file.is_file())
-        .collect::<Vec<_>>();
-
-    let prefix_count = args.chars.into();
-    let result_map = files
-        .iter()
-        .map(|file| format!("{}", file.display()))
-        .map(|file| {
-            let mut path = file.split(MAIN_SEPARATOR).collect::<Vec<_>>();
-            let last_part = &path.remove(path.len() - 1)[prefix_count..];
-            path.push(last_part);
-            (file.clone(), path.join(MAIN_SEPARATOR.to_string().as_str()))
-        })
-        .collect::<HashMap<_, _>>();
-
-    for (from, to) in &result_map {
-        println!("{} -> {}", from, to);
-    }
-
-    if args.modify {
-        for (from, to) in result_map {
-            fs::rename(from, to).expect("Rename failed!");
-        }
-    }
+    files
 }
