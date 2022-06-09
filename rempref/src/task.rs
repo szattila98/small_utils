@@ -3,10 +3,12 @@ use std::{fmt::Display, path::MAIN_SEPARATOR};
 pub struct RemovePrefixTask {
     pub from: String,
     pub to: String,
+    // TODO handle error here
 }
 
 impl From<(u8, String)> for RemovePrefixTask {
     fn from((prefix_len, from): (u8, String)) -> Self {
+        // TODO try using PathBuf methods
         let mut path = from.split(MAIN_SEPARATOR).collect::<Vec<_>>();
         let last_part = &path.remove(path.len() - 1)[prefix_len.into()..];
         path.push(last_part);

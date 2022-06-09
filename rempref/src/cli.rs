@@ -1,13 +1,16 @@
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
-#[structopt(name = "rempref", about = "A file prefix removal utility.")]
+#[structopt(name = "rempref")]
+/// A file prefix removal utility
 pub struct Args {
     // pub debug: bool,
+    /// Pass to make the file renames, otherwise it only does a dry run
     #[structopt(short, long)]
-    pub modify: bool,
+    pub remove_prefix: bool,
+    /// The length of the prefix to remove
     #[structopt(short, long)]
-    pub prefix_len: u8,
+    pub prefix_length: u8,
     // pub extensions: Option<Vec<String>>,
     // pub pattern: Option<String>,
     // pub recursive: bool,
