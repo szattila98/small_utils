@@ -1,9 +1,9 @@
 use std::{fmt::Display, path::MAIN_SEPARATOR};
 
+#[derive(Clone)]
 pub struct RemovePrefixTask {
     pub from: String,
     pub to: String,
-    // TODO handle error here
 }
 
 impl From<(u8, String)> for RemovePrefixTask {
