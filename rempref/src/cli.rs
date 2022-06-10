@@ -16,4 +16,7 @@ pub struct Args {
     // pub recursive: bool,
     // pub show_similarities: bool
     // pub path: Option<PathBuf>
+    // pub restore_point: bool,
+    // pub restore_on_failure: bool,
+    // pub wait_confirmation: bool,
 }
