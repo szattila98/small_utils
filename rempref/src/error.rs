@@ -2,11 +2,11 @@ use std::{ffi::OsString, io};
 use thiserror::Error;
 
 #[derive(Debug, Error)]
-pub enum RemovePrefixError {
+pub enum RemPrefError {
     #[error("Could not get working dir, reason: '{0}'")]
-    WorkingDirRetrieval(io::Error),
+    WorkingDirRetrievalFailed(io::Error),
     #[error("Current directory string is invalid: '{0:?}'")]
-    WorkingDirParse(OsString),
+    WorkingDirParseFailed(OsString),
     #[error("File pattern is invalid: '{0}'")]
-    GlobPattern(#[from] glob::PatternError),
+    GlobPatternInvalid(#[from] glob::PatternError),
 }
