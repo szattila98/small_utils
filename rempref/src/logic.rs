@@ -1,9 +1,6 @@
 use crate::error::RemPrefError;
 use glob::glob;
-use std::{
-    env, fs, io,
-    path::{PathBuf, MAIN_SEPARATOR},
-};
+use std::{env, fs, io, path::PathBuf};
 
 pub struct Rempref {
     // config: Config,
@@ -38,13 +35,15 @@ impl Rempref {
     //         .collect()
     // }
 
-    pub fn get_failed_tasks(&self) -> Vec<RemPrefTask> {
-        self.tasks
-            .iter()
-            .enumerate()
-            .filter(|(i, _)| self.failed_tasks.iter().any(|(j, _)| j == i))
-            .map(|(_, t)| t.clone())
-            .collect()
+    pub fn get_failed_tasks(&self) -> Vec<FailedRemprefTask> {
+        let mut failed_tasks = vec![];
+        for (i, task) in self.tasks.iter().enumerate() {
+            match self.failed_tasks.get(i) {
+                Some((_, e)) => failed_tasks.push((task.clone(), e.to_string()).into()),
+                None => (),
+            }
+        }
+        failed_tasks
     }
 
     pub fn execute(&mut self) -> (usize, usize) {
@@ -85,7 +84,7 @@ impl Rempref {
     fn create_tasks(prefix_length: u8, files: Vec<PathBuf>) -> Vec<RemPrefTask> {
         files
             .iter()
-            .map(|file| (prefix_length, file.display().to_string()).into())
+            .map(|file| (prefix_length, file.to_owned()).into())
             .collect::<Vec<RemPrefTask>>()
     }
 }
@@ -96,16 +95,30 @@ pub struct Config {
 
 #[derive(Clone)]
 pub struct RemPrefTask {
-    pub from: String,
-    pub to: String,
+    pub from: PathBuf,
+    pub to: PathBuf,
 }
 
-impl From<(u8, String)> for RemPrefTask {
-    fn from((prefix_len, from): (u8, String)) -> Self {
-        let mut path = from.split(MAIN_SEPARATOR).collect::<Vec<_>>();
-        let last_part = &path.remove(path.len() - 1)[prefix_len.into()..];
-        path.push(last_part);
-        let to = path.join(MAIN_SEPARATOR.to_string().as_str());
+impl From<(u8, PathBuf)> for RemPrefTask {
+    fn from((prefix_len, from): (u8, PathBuf)) -> Self {
+        let mut to = from.clone();
+        to.pop();
+        let filename = &from.file_name().unwrap().to_string_lossy()[prefix_len.into()..];
+        to.push(filename);
         RemPrefTask { from, to }
+    }
+}
+
+pub struct FailedRemprefTask {
+    pub file_path: PathBuf,
+    pub reason: String,
+}
+
+impl From<(RemPrefTask, String)> for FailedRemprefTask {
+    fn from((task, reason): (RemPrefTask, String)) -> Self {
+        FailedRemprefTask {
+            file_path: task.from,
+            reason,
+        }
     }
 }
