@@ -1,10 +1,12 @@
 use crate::error::RemPrefError;
+use pathdiff::diff_paths;
 use std::{env, fs, io, path::PathBuf};
 use wax::Glob;
 
 pub struct Rempref {
+    working_dir: PathBuf,
     tasks: Vec<RemPrefTask>,
-    successful_tasks: Vec<usize>,
+    successful_tasks: Vec<usize>, // TODO not importand, remove
     failed_tasks: Vec<(usize, io::Error)>,
 }
 
@@ -12,17 +14,27 @@ impl Rempref {
     pub fn init(config: Config) -> Result<Self, RemPrefError> {
         let working_dir = Self::get_working_dir()?;
         let glob_pattern = Self::generate_glob_pattern(&config);
-        let files = Self::read_files(working_dir, glob_pattern)?;
+        let files = Self::read_files(&working_dir, glob_pattern)?;
         let tasks = Self::create_tasks(config.prefix_length, files);
         Ok(Self {
+            working_dir: PathBuf::from(working_dir),
             tasks,
             successful_tasks: vec![],
             failed_tasks: vec![],
         })
     }
 
-    pub fn get_tasks(&self) -> &Vec<RemPrefTask> {
-        &self.tasks
+    pub fn get_tasks(&self) -> Vec<RemPrefTask> {
+        self.tasks.clone()
+    }
+
+    pub fn get_relativized_tasks(&self) -> Vec<RemPrefTask> {
+        let mut tasks = self.get_tasks();
+        tasks.iter_mut().for_each(|task| {
+            task.from = diff_paths(&task.from, &self.working_dir).unwrap();
+            task.to = diff_paths(&task.to, &self.working_dir).unwrap();
+        });
+        tasks
     }
 
     // pub fn get_successful_tasks(&self) -> Vec<RemPrefTask> {
@@ -36,13 +48,20 @@ impl Rempref {
 
     pub fn get_failed_tasks(&self) -> Vec<FailedRemprefTask> {
         let mut failed_tasks = vec![];
-        for (i, task) in self.tasks.iter().enumerate() {
-            match self.failed_tasks.get(i) {
-                Some((_, e)) => failed_tasks.push((task.clone(), e.to_string()).into()),
-                None => (),
+        for (i, error) in &self.failed_tasks {
+            if let Some(task) = self.tasks.get(i.clone()) {
+                failed_tasks.push((task.clone(), error.to_string()).into());
             }
         }
         failed_tasks
+    }
+
+    pub fn get_relativized_failed_tasks(&self) -> Vec<FailedRemprefTask> {
+        let mut tasks = self.get_failed_tasks();
+        tasks.iter_mut().for_each(|task| {
+            task.file_path = diff_paths(&task.file_path, &self.working_dir).unwrap();
+        });
+        tasks
     }
 
     pub fn execute(&mut self) -> (usize, usize) {
@@ -70,12 +89,14 @@ impl Rempref {
         if config.extensions.is_empty() {
             base
         } else {
-            println!("{}.{{{}}}", base, config.extensions.join(","));
             format!("{}.{{{}}}", base, config.extensions.join(","))
         }
     }
 
-    fn read_files(working_dir: String, glob_pattern: String) -> Result<Vec<PathBuf>, RemPrefError> {
+    fn read_files(
+        working_dir: &String,
+        glob_pattern: String,
+    ) -> Result<Vec<PathBuf>, RemPrefError> {
         let exp = format!("{working_dir}{glob_pattern}");
         let glob = Glob::new(&exp)?;
         let mut files = vec![];
