@@ -1,5 +1,4 @@
-use crate::logic::{Config, FailedRemprefTask, RemPrefTask};
-use std::fmt::Display;
+use crate::logic::Config;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -32,17 +31,5 @@ impl From<Args> for Config {
             prefix_length: args.prefix_length,
             extensions: args.extensions,
         }
-    }
-}
-
-impl Display for RemPrefTask {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} -> {}", self.from.display(), self.to.display()) // TODO working dir should not be shown
-    }
-}
-
-impl Display for FailedRemprefTask {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} => {}", self.file_path.display(), self.reason) // TODO working dir should not be shown
     }
 }

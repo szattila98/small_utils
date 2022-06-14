@@ -1,3 +1,5 @@
+use std::env;
+
 use cli::Args;
 use error::RemPrefError;
 use logic::Rempref;
@@ -9,22 +11,26 @@ mod logic;
 
 fn main() -> Result<(), RemPrefError> {
     let args = Args::from_args();
+    let working_dir = env::current_dir().expect("failed to get working directory");
     let flush = args.do_renames;
-    let mut rempref = Rempref::init(args.into())?;
+    let mut rempref = Rempref::init(working_dir, args.into())?;
+
     let tasks = rempref.get_relativized_tasks();
     if tasks.is_empty() {
         println!("No files found to be renamed with these arguments!\n");
         return Ok(());
     }
+
     println!("\nRenames to be made:");
     tasks.iter().for_each(|task| {
         println!("{task}");
     });
-    // TODO case of no tasks should be handled on UI
     println!();
+
     if flush {
         println!("\nExecuting renames...");
         let (success_count, fail_count) = rempref.execute();
+
         if fail_count == 0 {
             println!("Renames successful, {success_count} files renamed!\n");
         } else if success_count == 0 {
