@@ -49,7 +49,7 @@ impl Rempref {
     pub fn get_failed_tasks(&self) -> Vec<FailedRemprefTask> {
         let mut failed_tasks = vec![];
         for (i, error) in &self.failed_tasks {
-            if let Some(task) = self.tasks.get(i.clone()) {
+            if let Some(task) = self.tasks.get(*i) {
                 failed_tasks.push((task.clone(), error.to_string()).into());
             }
         }
