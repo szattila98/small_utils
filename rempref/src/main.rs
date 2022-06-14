@@ -9,12 +9,13 @@ mod logic;
 
 fn main() -> Result<(), RemPrefError> {
     let args = Args::from_args();
-    let flush = args.execute_renames;
+    let flush = args.do_renames;
     let mut rempref = Rempref::init(args.into())?;
     println!("\nRenames to be made:");
     rempref.get_tasks().iter().for_each(|task| {
         println!("{task}");
     });
+    // TODO case of no tasks should be handled on UI
     println!();
     if flush {
         println!("\nExecuting renames...");
@@ -37,7 +38,7 @@ fn main() -> Result<(), RemPrefError> {
         }
         println!()
     } else {
-        println!("Run with -e flag to execute renames\n");
+        println!("Run with -r flag to execute renames\n");
     }
     Ok(())
 }

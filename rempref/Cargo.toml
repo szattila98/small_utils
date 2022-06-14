@@ -7,5 +7,5 @@ description = "A file prefix removal utility"
 
 [dependencies]
 structopt = "0.3.26"
-glob = "0.3.0"
+wax = "0.5.0"
 thiserror = "1.0.31"

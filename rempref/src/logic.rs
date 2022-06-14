@@ -1,9 +1,8 @@
 use crate::error::RemPrefError;
-use glob::glob;
 use std::{env, fs, io, path::PathBuf};
+use wax::Glob;
 
 pub struct Rempref {
-    // config: Config,
     tasks: Vec<RemPrefTask>,
     successful_tasks: Vec<usize>,
     failed_tasks: Vec<(usize, io::Error)>,
@@ -12,10 +11,10 @@ pub struct Rempref {
 impl Rempref {
     pub fn init(config: Config) -> Result<Self, RemPrefError> {
         let working_dir = Self::get_working_dir()?;
-        let files = Self::read_files(format!("{}/*", working_dir))?;
+        let glob_pattern = Self::generate_glob_pattern(&config);
+        let files = Self::read_files(working_dir, glob_pattern)?;
         let tasks = Self::create_tasks(config.prefix_length, files);
         Ok(Self {
-            // config,
             tasks,
             successful_tasks: vec![],
             failed_tasks: vec![],
@@ -66,16 +65,29 @@ impl Rempref {
         }
     }
 
-    fn read_files(glob_pattern: String) -> Result<Vec<PathBuf>, RemPrefError> {
+    fn generate_glob_pattern(config: &Config) -> String {
+        let base = "/*".to_string(); // TODO builder for pattern maybe?
+        if config.extensions.is_empty() {
+            base
+        } else {
+            println!("{}.{{{}}}", base, config.extensions.join(","));
+            format!("{}.{{{}}}", base, config.extensions.join(","))
+        }
+    }
+
+    fn read_files(working_dir: String, glob_pattern: String) -> Result<Vec<PathBuf>, RemPrefError> {
+        let exp = format!("{working_dir}{glob_pattern}");
+        let glob = Glob::new(&exp)?;
         let mut files = vec![];
-        for entry in glob(&glob_pattern)? {
+        for entry in glob.walk("/") {
             match entry {
-                Ok(path) => {
+                Ok(res) => {
+                    let path = res.into_path();
                     if path.is_file() && !path.is_symlink() {
                         files.push(path);
                     }
                 }
-                Err(e) => println!("{e}"),
+                Err(e) => println!("{e}"), // TODO better errorhandling
             }
         }
         Ok(files)
@@ -91,6 +103,7 @@ impl Rempref {
 
 pub struct Config {
     pub prefix_length: u8,
+    pub extensions: Vec<String>,
 }
 
 #[derive(Clone)]

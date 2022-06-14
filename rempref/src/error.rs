@@ -1,5 +1,6 @@
 use std::{ffi::OsString, io};
 use thiserror::Error;
+use wax::BuildError;
 
 #[derive(Debug, Error)]
 pub enum RemPrefError {
@@ -8,5 +9,11 @@ pub enum RemPrefError {
     #[error("Current directory string is invalid: '{0:?}'")]
     WorkingDirParseFailed(OsString),
     #[error("File pattern is invalid: '{0}'")]
-    GlobPatternInvalid(#[from] glob::PatternError),
+    GlobPatternInvalid(String),
+}
+
+impl From<BuildError<'_>> for RemPrefError {
+    fn from(e: BuildError) -> Self {
+        Self::GlobPatternInvalid(e.to_string())
+    }
 }
