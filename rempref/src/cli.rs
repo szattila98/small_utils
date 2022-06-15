@@ -7,7 +7,6 @@ use structopt::StructOpt;
 #[structopt(name = "rempref")]
 /// A file prefix removal utility
 pub struct Args {
-    // pub debug: bool,
     /// The length of the prefix to remove
     #[structopt(short, long)]
     pub prefix_length: u8,
@@ -17,22 +16,20 @@ pub struct Args {
     /// Specify file extensions to remove the prefix from
     #[structopt(short, long)]
     pub extensions: Vec<String>,
-    // pub file_pattern: Option<String>,
-    // pub removal_pattern: Option<String>,
-    // pub recursive: bool, + pub depth: u8,
-    // pub show_similarities: bool
-    // pub path: Option<PathBuf>
-    // pub restore_point: bool,
-    // pub restore_on_failure: bool,
-    // pub wait_confirmation: bool,
+    /// Recursively search all files in the working directory
+    #[structopt(short, long)]
+    pub recursive: bool,
+    // pub working_dir: Option<PathBuf> // custom working directory
+    // pub savepoint: bool, // save a csv with information to restore the renames
+    // pub load_savepoint: bool // restore the renames on failure
+    // pub file_pattern: Option<Patterns>, // basic patterns enum with custom option
+    // pub prefix_pattern: Option<String>, // eg remove prefixes that match this pattern
+    // pub similarities: bool // search for similarities between files and create tasks based on those
 }
 
 impl From<Args> for Config {
     fn from(args: Args) -> Self {
-        Config {
-            prefix_length: args.prefix_length,
-            extensions: args.extensions,
-        }
+        Config::new(args.prefix_length, args.extensions, args.recursive)
     }
 }
 

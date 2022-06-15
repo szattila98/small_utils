@@ -5,6 +5,22 @@ use std::{
 };
 use walkdir::WalkDir;
 
+pub struct Config {
+    prefix_length: u8,
+    extensions: Vec<String>,
+    recursive: bool,
+}
+
+impl Config {
+    pub fn new(prefix_length: u8, extensions: Vec<String>, recursive: bool) -> Self {
+        Self {
+            prefix_length,
+            extensions,
+            recursive,
+        }
+    }
+}
+
 pub struct Rempref {
     working_dir: PathBuf,
     tasks: Vec<RemPrefTask>,
@@ -13,7 +29,7 @@ pub struct Rempref {
 
 impl Rempref {
     pub fn init(working_dir: PathBuf, config: Config) -> Self {
-        let files = Self::read_files(&working_dir);
+        let files = Self::read_files(&working_dir, &config);
         let fileter_files = Self::filter_files(files, &config);
         let tasks = Self::create_tasks(config.prefix_length, fileter_files);
         Self {
@@ -23,9 +39,14 @@ impl Rempref {
         }
     }
 
-    fn read_files(working_dir: &Path) -> Vec<PathBuf> {
+    fn read_files(working_dir: &Path, config: &Config) -> Vec<PathBuf> {
+        let dir_iter = if !config.recursive {
+            WalkDir::new(working_dir).max_depth(1)
+        } else {
+            WalkDir::new(working_dir)
+        };
         let mut files = vec![];
-        for result in WalkDir::new(working_dir).max_depth(1) {
+        for result in dir_iter {
             match result {
                 Ok(entry) => {
                     let path = entry.into_path();
@@ -100,13 +121,9 @@ impl Rempref {
     }
 }
 
-pub struct Config {
-    pub prefix_length: u8,
-    pub extensions: Vec<String>,
-}
-
 #[derive(Clone)]
 pub struct RemPrefTask {
+    // TODO no publics
     pub from: PathBuf,
     pub to: PathBuf,
 }
