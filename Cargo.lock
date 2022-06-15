@@ -44,8 +44,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "fmove"
+name = "denest"
 version = "0.1.0"
+dependencies = [
+ "pathdiff",
+ "structopt",
+ "walkdir",
+]
 
 [[package]]
 name = "heck"
