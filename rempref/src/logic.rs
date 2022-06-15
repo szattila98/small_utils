@@ -1,11 +1,9 @@
-use crate::error::RemPrefError;
-use nu_glob::glob;
 use pathdiff::diff_paths;
 use std::{
-    fmt::Display,
     fs, io,
-    path::{self, Path, PathBuf},
+    path::{Path, PathBuf},
 };
+use walkdir::WalkDir;
 
 pub struct Rempref {
     working_dir: PathBuf,
@@ -14,41 +12,48 @@ pub struct Rempref {
 }
 
 impl Rempref {
-    pub fn init(working_dir: PathBuf, config: Config) -> Result<Self, RemPrefError> {
-        let glob_pattern = Self::generate_glob_pattern(&config);
-        let files = Self::read_files(&working_dir, glob_pattern)?;
-        let tasks = Self::create_tasks(config.prefix_length, files);
-        Ok(Self {
+    pub fn init(working_dir: PathBuf, config: Config) -> Self {
+        let files = Self::read_files(&working_dir);
+        let fileter_files = Self::filter_files(files, &config);
+        let tasks = Self::create_tasks(config.prefix_length, fileter_files);
+        Self {
             working_dir,
             tasks,
             failed_tasks: vec![],
-        })
-    }
-
-    fn generate_glob_pattern(config: &Config) -> String {
-        let base = format!("{}*", path::MAIN_SEPARATOR); // TODO builder for pattern maybe?
-        if config.extensions.is_empty() {
-            base
-        } else {
-            format!("{}?({})", base, config.extensions.join("|.")) // TODO make this work
         }
     }
 
-    fn read_files(working_dir: &Path, glob_pattern: String) -> Result<Vec<PathBuf>, RemPrefError> {
-        let exp = format!("{}{}", working_dir.display(), glob_pattern);
-        println!("{}", exp);
+    fn read_files(working_dir: &Path) -> Vec<PathBuf> {
         let mut files = vec![];
-        for entry in glob(&exp)? {
-            match entry {
-                Ok(path) => {
+        for result in WalkDir::new(working_dir).max_depth(1) {
+            match result {
+                Ok(entry) => {
+                    let path = entry.into_path();
                     if path.is_file() && !path.is_symlink() {
                         files.push(path);
                     }
                 }
-                Err(e) => println!("{e}"), // TODO better error handling
+                Err(e) => println!("{e}"),
             }
         }
-        Ok(files)
+        files
+    }
+
+    fn filter_files(files: Vec<PathBuf>, config: &Config) -> Vec<PathBuf> {
+        if !config.extensions.is_empty() {
+            let mut filtered_files = vec![];
+            for file in files {
+                let file_extension = match file.extension() {
+                    Some(ext) => ext.to_string_lossy().to_string(),
+                    None => continue,
+                };
+                if config.extensions.contains(&file_extension) {
+                    filtered_files.push(file);
+                }
+            }
+            return filtered_files;
+        }
+        files
     }
 
     fn create_tasks(prefix_length: u8, files: Vec<PathBuf>) -> Vec<RemPrefTask> {
@@ -69,10 +74,6 @@ impl Rempref {
             self.failed_tasks.len(),
         )
     }
-
-    // pub fn get_tasks(&self) -> Vec<RemPrefTask> {
-    //     self.tasks.clone()
-    // }
 
     pub fn get_relativized_tasks(&self) -> Vec<RemPrefTask> {
         self.tasks
@@ -129,12 +130,6 @@ impl From<(u8, PathBuf)> for RemPrefTask {
     }
 }
 
-impl Display for RemPrefTask {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} -> {}", self.from.display(), self.to.display())
-    }
-}
-
 #[derive(Clone)]
 pub struct FailedRemprefTask {
     pub file_path: PathBuf,
@@ -155,11 +150,5 @@ impl From<(RemPrefTask, String)> for FailedRemprefTask {
             file_path: task.from,
             reason,
         }
-    }
-}
-
-impl Display for FailedRemprefTask {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} => {}", self.file_path.display(), self.reason)
     }
 }

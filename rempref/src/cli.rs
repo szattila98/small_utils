@@ -1,4 +1,6 @@
-use crate::logic::Config;
+use std::fmt::Display;
+
+use crate::logic::{Config, FailedRemprefTask, RemPrefTask};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -17,7 +19,7 @@ pub struct Args {
     pub extensions: Vec<String>,
     // pub file_pattern: Option<String>,
     // pub removal_pattern: Option<String>,
-    // pub recursive: bool,
+    // pub recursive: bool, + pub depth: u8,
     // pub show_similarities: bool
     // pub path: Option<PathBuf>
     // pub restore_point: bool,
@@ -31,5 +33,17 @@ impl From<Args> for Config {
             prefix_length: args.prefix_length,
             extensions: args.extensions,
         }
+    }
+}
+
+impl Display for RemPrefTask {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} -> {}", self.from.display(), self.to.display())
+    }
+}
+
+impl Display for FailedRemprefTask {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{} => {}", self.file_path.display(), self.reason)
     }
 }

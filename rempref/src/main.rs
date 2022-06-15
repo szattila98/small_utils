@@ -1,24 +1,22 @@
 use std::env;
 
 use cli::Args;
-use error::RemPrefError;
 use logic::Rempref;
 use structopt::StructOpt;
 
 mod cli;
-mod error;
 mod logic;
 
-fn main() -> Result<(), RemPrefError> {
+fn main() {
     let args = Args::from_args();
     let working_dir = env::current_dir().expect("failed to get working directory");
     let flush = args.do_renames;
-    let mut rempref = Rempref::init(working_dir, args.into())?;
+    let mut rempref = Rempref::init(working_dir, args.into());
 
     let tasks = rempref.get_relativized_tasks();
     if tasks.is_empty() {
         println!("No files found to be renamed with these arguments!\n");
-        return Ok(());
+        return;
     }
 
     println!("\nRenames to be made:");
@@ -55,7 +53,6 @@ fn main() -> Result<(), RemPrefError> {
         }
         println!()
     } else {
-        println!("Run with -r flag to execute renames\n");
+        println!("Run with -d flag to execute renames\n");
     }
-    Ok(())
 }
