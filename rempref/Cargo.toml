@@ -6,3 +6,6 @@ authors = ["Attila Szőke"]
 description = "A file prefix removal utility"
 
 [dependencies]
+structopt = "0.3.26"
+walkdir = "2.3.2"
+pathdiff = "0.2.1"
