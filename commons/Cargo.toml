@@ -1,0 +1,8 @@
+[package]
+name = "commons"
+version = "0.1.0"
+edition = "2021"
+authors = ["Attila Szőke"]
+description = "Common functions and resources for workspace members"
+
+[dependencies]
