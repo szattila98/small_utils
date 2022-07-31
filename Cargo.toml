@@ -1,4 +1,6 @@
 [workspace]
 members = [
-    "rempref", "denest"
+   "commons",
+   "rempref",
+   "denest"
 ]

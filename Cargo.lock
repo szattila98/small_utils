@@ -44,6 +44,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "commons"
+version = "0.1.0"
+dependencies = [
+ "pathdiff",
+ "walkdir",
+]
+
+[[package]]
 name = "denest"
 version = "0.1.0"
 dependencies = [
@@ -134,9 +142,8 @@ dependencies = [
 name = "rempref"
 version = "0.1.0"
 dependencies = [
- "pathdiff",
+ "commons",
  "structopt",
- "walkdir",
 ]
 
 [[package]]

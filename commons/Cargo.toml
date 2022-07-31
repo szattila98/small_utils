@@ -1,11 +1,10 @@
 [package]
-name = "denest"
+name = "commons"
 version = "0.1.0"
 edition = "2021"
 authors = ["Attila Szőke"]
-description = "Nested file hoister utility"
+description = "Common functions and resources for workspace members"
 
 [dependencies]
-structopt = "0.3.26"
 walkdir = "2.3.2"
 pathdiff = "0.2.1"
