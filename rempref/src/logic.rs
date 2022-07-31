@@ -1,9 +1,5 @@
-use pathdiff::diff_paths;
-use std::{
-    fs, io,
-    path::{Path, PathBuf},
-};
-use walkdir::WalkDir;
+use commons::{diff_paths, filter_by_extension, read_files};
+use std::{fs, io, path::PathBuf};
 
 pub struct Config {
     prefix_length: u8,
@@ -29,52 +25,18 @@ pub struct Rempref {
 
 impl Rempref {
     pub fn init(working_dir: PathBuf, config: Config) -> Self {
-        let files = Self::read_files(&working_dir, &config);
-        let fileter_files = Self::filter_files(files, &config);
-        let tasks = Self::create_tasks(config.prefix_length, fileter_files);
+        let files = if config.recursive {
+            read_files(&working_dir, None)
+        } else {
+            read_files(&working_dir, Some(1))
+        };
+        let filter_files = filter_by_extension(files, &config.extensions);
+        let tasks = Self::create_tasks(config.prefix_length, filter_files);
         Self {
             working_dir,
             tasks,
             failed_tasks: vec![],
         }
-    }
-
-    fn read_files(working_dir: &Path, config: &Config) -> Vec<PathBuf> {
-        let dir_iter = if !config.recursive {
-            WalkDir::new(working_dir).max_depth(1)
-        } else {
-            WalkDir::new(working_dir)
-        };
-        let mut files = vec![];
-        for result in dir_iter {
-            match result {
-                Ok(entry) => {
-                    let path = entry.into_path();
-                    if path.is_file() && !path.is_symlink() {
-                        files.push(path);
-                    }
-                }
-                Err(e) => println!("{e}"),
-            }
-        }
-        files
-    }
-
-    fn filter_files(files: Vec<PathBuf>, config: &Config) -> Vec<PathBuf> {
-        if !config.extensions.is_empty() {
-            let mut filtered_files = vec![];
-            for file in files {
-                let file_extension = match file.extension() {
-                    Some(ext) => ext.to_string_lossy().to_string(),
-                    None => continue,
-                };
-                if config.extensions.contains(&file_extension) {
-                    filtered_files.push(file);
-                }
-            }
-            return filtered_files;
-        }
-        files
     }
 
     fn create_tasks(prefix_length: u8, files: Vec<PathBuf>) -> Vec<RemPrefTask> {
