@@ -1,6 +1,4 @@
-use std::fmt::Display;
-
-use crate::logic::{Config, FailedRemprefTask, RemPrefTask};
+use crate::logic::Config;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -30,17 +28,5 @@ pub struct Args {
 impl From<Args> for Config {
     fn from(args: Args) -> Self {
         Config::new(args.prefix_length, args.extensions, args.recursive)
-    }
-}
-
-impl Display for RemPrefTask {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} -> {}", self.from.display(), self.to.display())
-    }
-}
-
-impl Display for FailedRemprefTask {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{} => {}", self.file_path.display(), self.reason)
     }
 }

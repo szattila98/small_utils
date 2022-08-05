@@ -1,4 +1,4 @@
-use commons::{diff_paths, filter_by_extension, read_files};
+use commons::{filter_by_extension, read_files, FailedFileOperation, FileOperationTask};
 use std::{fs, io, path::PathBuf};
 
 pub struct Config {
@@ -19,7 +19,7 @@ impl Config {
 
 pub struct Rempref {
     working_dir: PathBuf,
-    tasks: Vec<RemPrefTask>,
+    tasks: Vec<FileOperationTask>,
     failed_tasks: Vec<(usize, io::Error)>,
 }
 
@@ -39,11 +39,18 @@ impl Rempref {
         }
     }
 
-    fn create_tasks(prefix_length: u8, files: Vec<PathBuf>) -> Vec<RemPrefTask> {
+    fn create_tasks(prefix_length: u8, files: Vec<PathBuf>) -> Vec<FileOperationTask> {
         files
             .iter()
-            .map(|file| (prefix_length, file.to_owned()).into())
-            .collect::<Vec<RemPrefTask>>()
+            .map(|from| {
+                let from = from.clone();
+                let mut to = from.clone();
+                to.pop();
+                let filename = &from.file_name().unwrap().to_string_lossy()[prefix_length.into()..];
+                to.push(filename);
+                FileOperationTask::new(from, to)
+            })
+            .collect::<Vec<FileOperationTask>>()
     }
 
     pub fn execute(&mut self) -> (usize, usize) {
@@ -58,76 +65,30 @@ impl Rempref {
         )
     }
 
-    pub fn get_relativized_tasks(&self) -> Vec<RemPrefTask> {
+    pub fn get_relativized_tasks(&self) -> Vec<FileOperationTask> {
         self.tasks
             .iter()
             .map(|task| task.relativize(&self.working_dir))
             .collect()
     }
 
-    pub fn get_failed_tasks(&self) -> Vec<FailedRemprefTask> {
+    pub fn get_failed_tasks(&self) -> Vec<FailedFileOperation> {
         let mut failed_tasks = vec![];
         for (i, error) in &self.failed_tasks {
             if let Some(task) = self.tasks.get(*i) {
-                failed_tasks.push((task.clone(), error.to_string()).into());
+                failed_tasks.push(FailedFileOperation::new(
+                    task.from.clone(),
+                    error.to_string(),
+                ));
             }
         }
         failed_tasks
     }
 
-    pub fn get_relativized_failed_tasks(&self) -> Vec<FailedRemprefTask> {
+    pub fn get_relativized_failed_tasks(&self) -> Vec<FailedFileOperation> {
         self.get_failed_tasks()
             .iter()
             .map(|task| task.relativize(&self.working_dir))
             .collect()
-    }
-}
-
-#[derive(Clone)]
-pub struct RemPrefTask {
-    // TODO no publics
-    pub from: PathBuf,
-    pub to: PathBuf,
-}
-
-impl RemPrefTask {
-    pub fn relativize(&self, working_dir: &PathBuf) -> Self {
-        let mut task = self.clone();
-        task.from = diff_paths(&task.from, working_dir).unwrap();
-        task.to = diff_paths(&task.to, working_dir).unwrap();
-        task
-    }
-}
-
-impl From<(u8, PathBuf)> for RemPrefTask {
-    fn from((prefix_len, from): (u8, PathBuf)) -> Self {
-        let mut to = from.clone();
-        to.pop();
-        let filename = &from.file_name().unwrap().to_string_lossy()[prefix_len.into()..];
-        to.push(filename);
-        RemPrefTask { from, to }
-    }
-}
-
-#[derive(Clone)]
-pub struct FailedRemprefTask {
-    pub file_path: PathBuf,
-    pub reason: String,
-}
-
-impl FailedRemprefTask {
-    pub fn relativize(&self, working_dir: &PathBuf) -> Self {
-        let mut task = self.clone();
-        task.file_path = diff_paths(task.file_path, working_dir).unwrap();
-        task
-    }
-}
-
-impl From<(RemPrefTask, String)> for FailedRemprefTask {
-    fn from((task, reason): (RemPrefTask, String)) -> Self {
-        FailedRemprefTask {
-            file_path: task.from,
-            reason,
-        }
     }
 }
