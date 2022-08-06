@@ -46,6 +46,12 @@ pub fn filter_by_extension(files: Vec<PathBuf>, extensions: &Vec<String>) -> Vec
         .collect::<Vec<_>>()
 }
 
+pub fn is_in_working_dir(working_dir: &PathBuf, file: &PathBuf) -> bool {
+    match diff_paths(file, working_dir) {
+        Some(diff) => diff.iter().count() != 1,
+        None => false,
+    }
+}
 #[derive(Clone)]
 pub struct FileOperationTask {
     pub from: PathBuf,

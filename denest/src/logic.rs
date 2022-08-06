@@ -1,4 +1,6 @@
-use commons::{filter_by_extension, read_files, FailedFileOperation, FileOperationTask};
+use commons::{
+    filter_by_extension, is_in_working_dir, read_files, FailedFileOperation, FileOperationTask,
+};
 use std::{fs, io, path::PathBuf};
 pub struct Config {
     extensions: Vec<String>,
@@ -24,7 +26,10 @@ impl Denest {
         } else {
             read_files(&working_dir, None)
         };
-        let filtered_files = filter_by_extension(files, &config.extensions);
+        let filtered_files = filter_by_extension(files, &config.extensions)
+            .into_iter()
+            .filter(|file| is_in_working_dir(&working_dir, &file))
+            .collect::<Vec<_>>();
         let mut denest = Self {
             working_dir,
             tasks: vec![],
