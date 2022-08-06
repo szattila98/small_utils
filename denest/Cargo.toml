@@ -6,6 +6,5 @@ authors = ["Attila Szőke"]
 description = "Nested file hoister utility"
 
 [dependencies]
+commons = { path = "../commons" }
 structopt = "0.3.26"
-walkdir = "2.3.2"
-pathdiff = "0.2.1"

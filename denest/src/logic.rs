@@ -1,10 +1,7 @@
-use pathdiff::diff_paths;
-use std::{
-    fs, io,
-    path::{Path, PathBuf},
+use commons::{
+    filter_by_extension, is_in_working_dir, read_files, FailedFileOperation, FileOperationTask,
 };
-use walkdir::WalkDir;
-
+use std::{fs, io, path::PathBuf};
 pub struct Config {
     extensions: Vec<String>,
     depth: Option<u8>,
@@ -18,101 +15,79 @@ impl Config {
 
 pub struct Denest {
     working_dir: PathBuf,
-    tasks: Vec<DenestTask>,
+    tasks: Vec<FileOperationTask>,
     failed_tasks: Vec<(usize, io::Error)>,
 }
 
 impl Denest {
     pub fn init(working_dir: PathBuf, config: Config) -> Self {
-        todo!()
+        let files = if let Some(depth) = config.depth {
+            read_files(&working_dir, Some(depth.into()))
+        } else {
+            read_files(&working_dir, None)
+        };
+        let filtered_files = filter_by_extension(files, &config.extensions)
+            .into_iter()
+            .filter(|file| is_in_working_dir(&working_dir, file))
+            .collect::<Vec<_>>();
+        let mut denest = Self {
+            working_dir,
+            tasks: vec![],
+            failed_tasks: vec![],
+        };
+        denest.create_tasks(filtered_files);
+        denest
     }
 
-    fn read_files(working_dir: &Path, config: &Config) -> Vec<PathBuf> {
-        todo!()
-    }
-
-    fn filter_files(files: Vec<PathBuf>, config: &Config) -> Vec<PathBuf> {
-        todo!()
-    }
-
-    fn create_tasks(prefix_length: u8, files: Vec<PathBuf>) -> Vec<DenestTask> {
-        todo!()
+    fn create_tasks(&mut self, files: Vec<PathBuf>) {
+        self.tasks = files
+            .iter()
+            .map(|from| {
+                let from = from.clone();
+                let mut to = self.working_dir.clone();
+                let filename = &from.file_name().unwrap().to_string_lossy().to_string();
+                to.push(filename);
+                FileOperationTask::new(from, to)
+            })
+            .collect::<Vec<FileOperationTask>>();
     }
 
     pub fn execute(&mut self) -> (usize, usize) {
-        todo!()
+        self.tasks.iter().enumerate().for_each(|(i, task)| {
+            if let Err(e) = fs::rename(&task.from, &task.to) {
+                self.failed_tasks.push((i, e))
+            }
+        });
+        (
+            self.tasks.len() - self.failed_tasks.len(),
+            self.failed_tasks.len(),
+        )
     }
 
-    pub fn get_relativized_tasks(&self) -> Vec<DenestTask> {
+    pub fn get_relativized_tasks(&self) -> Vec<FileOperationTask> {
         self.tasks
             .iter()
             .map(|task| task.relativize(&self.working_dir))
             .collect()
     }
 
-    pub fn get_failed_tasks(&self) -> Vec<FailedDenestTask> {
+    pub fn get_failed_tasks(&self) -> Vec<FailedFileOperation> {
         let mut failed_tasks = vec![];
         for (i, error) in &self.failed_tasks {
             if let Some(task) = self.tasks.get(*i) {
-                failed_tasks.push((task.clone(), error.to_string()).into());
+                failed_tasks.push(FailedFileOperation::new(
+                    task.from.clone(),
+                    error.to_string(),
+                ));
             }
         }
         failed_tasks
     }
 
-    pub fn get_relativized_failed_tasks(&self) -> Vec<FailedDenestTask> {
+    pub fn get_relativized_failed_tasks(&self) -> Vec<FailedFileOperation> {
         self.get_failed_tasks()
             .iter()
             .map(|task| task.relativize(&self.working_dir))
             .collect()
-    }
-}
-
-#[derive(Clone)]
-pub struct DenestTask {
-    // TODO no publics
-    pub from: PathBuf,
-    pub to: PathBuf,
-}
-
-impl DenestTask {
-    pub fn relativize(&self, working_dir: &PathBuf) -> Self {
-        let mut task = self.clone();
-        task.from = diff_paths(&task.from, working_dir).unwrap();
-        task.to = diff_paths(&task.to, working_dir).unwrap();
-        task
-    }
-}
-
-impl From<(u8, PathBuf)> for DenestTask {
-    fn from((prefix_len, from): (u8, PathBuf)) -> Self {
-        let mut to = from.clone();
-        to.pop();
-        let filename = &from.file_name().unwrap().to_string_lossy()[prefix_len.into()..];
-        to.push(filename);
-        DenestTask { from, to }
-    }
-}
-
-#[derive(Clone)]
-pub struct FailedDenestTask {
-    pub file_path: PathBuf,
-    pub reason: String,
-}
-
-impl FailedDenestTask {
-    pub fn relativize(&self, working_dir: &PathBuf) -> Self {
-        let mut task = self.clone();
-        task.file_path = diff_paths(task.file_path, working_dir).unwrap();
-        task
-    }
-}
-
-impl From<(DenestTask, String)> for FailedDenestTask {
-    fn from((task, reason): (DenestTask, String)) -> Self {
-        FailedDenestTask {
-            file_path: task.from,
-            reason,
-        }
     }
 }

@@ -55,9 +55,8 @@ dependencies = [
 name = "denest"
 version = "0.1.0"
 dependencies = [
- "pathdiff",
+ "commons",
  "structopt",
- "walkdir",
 ]
 
 [[package]]
