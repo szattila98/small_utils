@@ -28,7 +28,7 @@ impl Denest {
         };
         let filtered_files = filter_by_extension(files, &config.extensions)
             .into_iter()
-            .filter(|file| is_in_working_dir(&working_dir, &file))
+            .filter(|file| is_in_working_dir(&working_dir, file))
             .collect::<Vec<_>>();
         let mut denest = Self {
             working_dir,
