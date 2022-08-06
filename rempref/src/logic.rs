@@ -30,8 +30,8 @@ impl Rempref {
         } else {
             read_files(&working_dir, Some(1))
         };
-        let filter_files = filter_by_extension(files, &config.extensions);
-        let tasks = Self::create_tasks(config.prefix_length, filter_files);
+        let filtered_files = filter_by_extension(files, &config.extensions);
+        let tasks = Self::create_tasks(config.prefix_length, filtered_files);
         Self {
             working_dir,
             tasks,

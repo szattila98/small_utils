@@ -1,7 +1,6 @@
-use std::env;
-
 use cli::Args;
 use logic::Rempref;
+use std::env;
 use structopt::StructOpt;
 
 mod cli;
