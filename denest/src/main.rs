@@ -1,4 +1,5 @@
 use cli::Args;
+use commons::FileOperationError;
 use logic::Denest;
 use std::env;
 use structopt::StructOpt;
@@ -10,7 +11,7 @@ fn main() {
     let args = Args::from_args();
     let working_dir = env::current_dir().expect("failed to get working directory");
     let flush = args.do_moves;
-    let mut denest = Denest::init(working_dir, args.into());
+    let mut denest = Denest::init(working_dir.clone(), args.into());
 
     let tasks = denest.get_relativized_tasks();
     if tasks.is_empty() {
@@ -26,7 +27,20 @@ fn main() {
 
     if flush {
         println!("\nExecuting moves...");
-        let (success_count, fail_count) = denest.execute();
+        let res = denest.execute();
+        if let Err(e) = &res {
+            println!("Failed to execute:");
+            match e {
+                FileOperationError::FilesWouldOwerwrite(files) => {
+                    println!("{e}");
+                    files.iter().for_each(|task| {
+                        println!("{}", task.relativize(&working_dir));
+                    });
+                }
+            }
+            return;
+        }
+        let (success_count, fail_count) = res.unwrap();
 
         if fail_count == 0 {
             println!("Moves successful, {success_count} files moved!\n");

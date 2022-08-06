@@ -3,6 +3,7 @@ use std::{
     fmt::Display,
     path::{Path, PathBuf},
 };
+use thiserror::Error;
 use walkdir::WalkDir;
 
 pub fn walkdir(root: &Path, depth: Option<usize>) -> Vec<PathBuf> {
@@ -52,7 +53,7 @@ pub fn is_in_working_dir(working_dir: &PathBuf, file: &PathBuf) -> bool {
         None => false,
     }
 }
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct FileOperationTask {
     pub from: PathBuf,
     pub to: PathBuf,
@@ -76,7 +77,7 @@ impl Display for FileOperationTask {
     }
 }
 
-#[derive(Clone)]
+#[derive(Debug, Clone)]
 pub struct FailedFileOperation {
     pub file_path: PathBuf,
     pub reason: String,
@@ -97,4 +98,10 @@ impl Display for FailedFileOperation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} => {}", self.file_path.display(), self.reason)
     }
+}
+
+#[derive(Debug, Error)]
+pub enum FileOperationError {
+    #[error("Some files would be overwritten")]
+    FilesWouldOwerwrite(Vec<FileOperationTask>),
 }

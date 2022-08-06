@@ -1,4 +1,5 @@
 use cli::Args;
+use commons::FileOperationError;
 use logic::Rempref;
 use std::env;
 use structopt::StructOpt;
@@ -10,7 +11,7 @@ fn main() {
     let args = Args::from_args();
     let working_dir = env::current_dir().expect("failed to get working directory");
     let flush = args.do_renames;
-    let mut rempref = Rempref::init(working_dir, args.into());
+    let mut rempref = Rempref::init(working_dir.clone(), args.into());
 
     let tasks = rempref.get_relativized_tasks();
     if tasks.is_empty() {
@@ -26,7 +27,20 @@ fn main() {
 
     if flush {
         println!("\nExecuting renames...");
-        let (success_count, fail_count) = rempref.execute();
+        let res = rempref.execute();
+        if let Err(e) = &res {
+            println!("Failed to execute:");
+            match e {
+                FileOperationError::FilesWouldOwerwrite(files) => {
+                    println!("{e}");
+                    files.iter().for_each(|task| {
+                        println!("{}", task.relativize(&working_dir));
+                    });
+                }
+            }
+            return;
+        }
+        let (success_count, fail_count) = res.unwrap();
 
         if fail_count == 0 {
             println!("Renames successful, {success_count} files renamed!\n");

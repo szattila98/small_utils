@@ -1,4 +1,6 @@
-use commons::{filter_by_extension, read_files, FailedFileOperation, FileOperationTask};
+use commons::{
+    filter_by_extension, read_files, FailedFileOperation, FileOperationError, FileOperationTask,
+};
 use std::{fs, io, path::PathBuf};
 
 pub struct Config {
@@ -53,16 +55,27 @@ impl Rempref {
             .collect::<Vec<FileOperationTask>>()
     }
 
-    pub fn execute(&mut self) -> (usize, usize) {
+    pub fn execute(&mut self) -> Result<(usize, usize), FileOperationError> {
+        let mut overwritten = vec![];
+        self.tasks.iter().for_each(|task| {
+            self.tasks.iter().for_each(|other_task| {
+                if task.from != other_task.from && task.to == other_task.to {
+                    overwritten.push(task.clone());
+                }
+            });
+        });
+        if !overwritten.is_empty() {
+            return Err(FileOperationError::FilesWouldOwerwrite(overwritten));
+        }
         self.tasks.iter().enumerate().for_each(|(i, task)| {
             if let Err(e) = fs::rename(&task.from, &task.to) {
                 self.failed_tasks.push((i, e))
             }
         });
-        (
+        Ok((
             self.tasks.len() - self.failed_tasks.len(),
             self.failed_tasks.len(),
-        )
+        ))
     }
 
     pub fn get_relativized_tasks(&self) -> Vec<FileOperationTask> {
