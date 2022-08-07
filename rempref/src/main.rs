@@ -1,5 +1,9 @@
 use cli::Args;
-use commons::{error::FileOperationError, Relativizable};
+use commons::file::{
+    errors::FileOperationError,
+    model::FileOperationResult,
+    traits::{FileOperation, Relativizable},
+};
 use logic::Rempref;
 use std::env;
 use structopt::StructOpt;
@@ -11,7 +15,7 @@ fn main() {
     let args = Args::from_args();
     let working_dir = env::current_dir().expect("failed to get working directory");
     let flush = args.do_renames;
-    let mut rempref = Rempref::init(working_dir.clone(), args.into());
+    let mut rempref = Rempref::new(working_dir.clone(), args.into());
 
     let tasks = rempref.get_tasks().relativize(&working_dir);
     if tasks.is_empty() {
@@ -40,12 +44,12 @@ fn main() {
             }
             return;
         }
-        let (success_count, fail_count) = res.unwrap();
+        let FileOperationResult { successful, failed } = res.unwrap();
 
-        if fail_count == 0 {
-            println!("Renames successful, {success_count} files renamed!\n");
-        } else if success_count == 0 {
-            println!("All {fail_count} renames failed:");
+        if failed == 0 {
+            println!("Renames successful, {successful} files renamed!\n");
+        } else if successful == 0 {
+            println!("All {failed} renames failed:");
             rempref
                 .get_failed_tasks()
                 .relativize(&working_dir)
@@ -56,7 +60,7 @@ fn main() {
         } else {
             println!(
                 "{} renames are successful, but {} renames failed:",
-                success_count, fail_count
+                successful, failed
             );
             rempref
                 .get_failed_tasks()

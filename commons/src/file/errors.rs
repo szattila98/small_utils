@@ -1,6 +1,5 @@
+use super::model::FileOperationTask;
 use thiserror::Error;
-
-use crate::FileOperationTask;
 
 #[derive(Debug, Error)]
 pub enum FileOperationError {

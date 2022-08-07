@@ -1,5 +1,9 @@
 use cli::Args;
-use commons::{error::FileOperationError, Relativizable};
+use commons::file::{
+    errors::FileOperationError,
+    model::FileOperationResult,
+    traits::{FileOperation, Relativizable},
+};
 use logic::Denest;
 use std::env;
 use structopt::StructOpt;
@@ -11,7 +15,7 @@ fn main() {
     let args = Args::from_args();
     let working_dir = env::current_dir().expect("failed to get working directory");
     let flush = args.do_moves;
-    let mut denest = Denest::init(working_dir.clone(), args.into());
+    let mut denest = Denest::new(working_dir.clone(), args.into());
 
     let tasks = denest.get_tasks().relativize(&working_dir);
     if tasks.is_empty() {
@@ -40,12 +44,12 @@ fn main() {
             }
             return;
         }
-        let (success_count, fail_count) = res.unwrap();
+        let FileOperationResult { successful, failed } = res.unwrap();
 
-        if fail_count == 0 {
-            println!("Moves successful, {success_count} files moved!\n");
-        } else if success_count == 0 {
-            println!("All {fail_count} moved failed:");
+        if failed == 0 {
+            println!("Moves successful, {successful} files moved!\n");
+        } else if successful == 0 {
+            println!("All {failed} moved failed:");
             denest
                 .get_failed_tasks()
                 .relativize(&working_dir)
@@ -56,7 +60,7 @@ fn main() {
         } else {
             println!(
                 "{} moves are successful, but {} moves failed:",
-                success_count, fail_count
+                successful, failed
             );
             denest
                 .get_tasks()
