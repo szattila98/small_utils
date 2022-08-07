@@ -40,9 +40,7 @@ pub trait ScanForErrors {
 pub trait ExecuteTask {
     fn execute_task(task: &FileOperationTask) -> io::Result<()>;
 
-    fn finally(&self) {
-        ()
-    }
+    fn finally(&self) {}
 }
 
 pub trait FileOperation<C>: Instantiate<C> + ScanForErrors + ExecuteTask {

@@ -83,17 +83,12 @@ impl ExecuteTask for Denest {
     }
 
     fn finally(&self) {
-        let mut dirs = read_dirs(&self.working_dir, None);
-        dirs.reverse();
-        println!("{dirs:?}");
-        for dir in dirs {
-            let is_empty = match dir.read_dir() {
-                Ok(mut reader) => reader.next().is_none(),
-                Err(_) => false,
-            };
-            if self.cleanup && is_empty {
-                fs::remove_dir(dir);
-            }
+        if self.cleanup {
+            let mut dirs = read_dirs(&self.working_dir, None);
+            dirs.reverse();
+            dirs.into_iter().for_each(|dir| {
+                let _ = fs::remove_dir(dir);
+            });
         }
     }
 }
