@@ -17,9 +17,13 @@ pub trait ToFileTask: IntoIterator + Sized {
     where
         T: Fn(<Self as IntoIterator>::Item) -> FileOperationTask,
     {
-        self.into_iter()
+        let mut tasks = self
+            .into_iter()
             .map(task_generator)
-            .collect::<Vec<FileOperationTask>>()
+            .collect::<Vec<FileOperationTask>>();
+        tasks.sort_by_key(|task| task.from.display().to_string());
+        tasks.sort_by_key(|task| task.from.iter().count());
+        tasks
     }
 }
 

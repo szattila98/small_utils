@@ -48,7 +48,7 @@ impl Denest {
             let filename = &from.file_name().unwrap().to_string_lossy().to_string();
             to.push(filename);
             FileOperationTask::new(from, to)
-        })
+        });
     }
 }
 
