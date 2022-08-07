@@ -1,15 +1,14 @@
-use structopt::StructOpt;
-
 use super::{
     errors::FileOperationError,
     model::{FailedFileOperation, FileOperationResult, FileOperationTask},
 };
 use std::{
-    env,
+    env, io,
     path::{Path, PathBuf},
 };
+use structopt::StructOpt;
 
-pub trait Relativizable {
+pub trait Relativize {
     fn relativize(&self, working_dir: &Path) -> Self;
 }
 
@@ -26,20 +25,52 @@ pub trait ToFileTask: IntoIterator + Sized {
 
 impl ToFileTask for Vec<PathBuf> {}
 
-pub trait Instantiable<T> {
-    fn new(working_dir: PathBuf, args: T) -> Self;
+pub trait Instantiate<C> {
+    fn new(working_dir: PathBuf, args: C) -> Self;
 }
 
 pub trait ScanForErrors {
     fn scan_for_errors(&self) -> Option<FileOperationError>;
 }
 
-pub trait FileOperation {
+pub trait ExecuteTask {
+    fn execute_task(task: &FileOperationTask) -> io::Result<()>;
+}
+
+pub trait FileOperation<C>: Instantiate<C> + ScanForErrors + ExecuteTask {
     fn get_tasks(&self) -> Vec<FileOperationTask>;
 
-    fn get_failed_tasks(&self) -> Vec<FailedFileOperation>;
+    fn get_failed_tasks(&self) -> &Vec<(usize, io::Error)>;
 
-    fn execute(&mut self) -> Result<FileOperationResult, FileOperationError>;
+    fn get_failed_tasks_mut(&mut self) -> &mut Vec<(usize, io::Error)>;
+
+    fn get_failed_operations(&self) -> Vec<FailedFileOperation> {
+        let mut failed_tasks = vec![];
+        for (i, error) in self.get_failed_tasks() {
+            if let Some(task) = self.get_tasks().get(*i) {
+                failed_tasks.push(FailedFileOperation::new(
+                    task.from.clone(),
+                    error.to_string(),
+                ));
+            }
+        }
+        failed_tasks
+    }
+
+    fn execute(&mut self) -> Result<FileOperationResult, FileOperationError> {
+        if let Some(e) = self.scan_for_errors() {
+            return Err(e);
+        }
+        self.get_tasks().iter().enumerate().for_each(|(i, task)| {
+            if let Err(e) = Self::execute_task(task) {
+                self.get_failed_tasks_mut().push((i, e))
+            }
+        });
+        Ok(FileOperationResult::new(
+            self.get_tasks().len() - self.get_failed_tasks().len(),
+            self.get_failed_tasks().len(),
+        ))
+    }
 }
 
 pub trait DoExec {
@@ -49,7 +80,7 @@ pub trait DoExec {
 pub trait Runnable<A, C, T>
 where
     A: StructOpt + Into<C> + DoExec,
-    T: Instantiable<C> + FileOperation,
+    T: Instantiate<C> + FileOperation<C>,
 {
     fn run(operation_name: &str) {
         let args = A::from_args();
@@ -91,7 +122,7 @@ where
             } else if successful == 0 {
                 println!("All {failed} {operation_name}s failed:");
                 file_operation
-                    .get_failed_tasks()
+                    .get_failed_operations()
                     .relativize(&working_dir)
                     .iter()
                     .for_each(|failed_task| {
@@ -102,7 +133,7 @@ where
                     "{successful} {operation_name}s are successful, but {failed} {operation_name}s failed:"
                 );
                 file_operation
-                    .get_failed_tasks()
+                    .get_failed_operations()
                     .relativize(&working_dir)
                     .iter()
                     .for_each(|failed_task| {

@@ -3,8 +3,8 @@ use std::{fs, io, path::PathBuf};
 use commons::file::{
     errors::FileOperationError,
     functions::{filter_by_extension, read_files},
-    model::{FailedFileOperation, FileOperationResult, FileOperationTask},
-    traits::{FileOperation, Instantiable, ScanForErrors, ToFileTask},
+    model::FileOperationTask,
+    traits::{ExecuteTask, FileOperation, Instantiate, ScanForErrors, ToFileTask},
 };
 pub struct Config {
     extensions: Vec<String>,
@@ -23,7 +23,7 @@ pub struct Denest {
     failed_tasks: Vec<(usize, io::Error)>,
 }
 
-impl Instantiable<Config> for Denest {
+impl Instantiate<Config> for Denest {
     fn new(working_dir: PathBuf, config: Config) -> Self {
         let files = if let Some(depth) = config.depth {
             read_files(&working_dir, Some(depth.into()))
@@ -70,36 +70,22 @@ impl ScanForErrors for Denest {
     }
 }
 
-impl FileOperation for Denest {
+impl ExecuteTask for Denest {
+    fn execute_task(task: &FileOperationTask) -> io::Result<()> {
+        fs::rename(&task.from, &task.to)
+    }
+}
+
+impl FileOperation<Config> for Denest {
     fn get_tasks(&self) -> Vec<FileOperationTask> {
         self.tasks.clone()
     }
 
-    fn get_failed_tasks(&self) -> Vec<FailedFileOperation> {
-        let mut failed_tasks = vec![];
-        for (i, error) in &self.failed_tasks {
-            if let Some(task) = self.tasks.get(*i) {
-                failed_tasks.push(FailedFileOperation::new(
-                    task.from.clone(),
-                    error.to_string(),
-                ));
-            }
-        }
-        failed_tasks
+    fn get_failed_tasks(&self) -> &Vec<(usize, io::Error)> {
+        &self.failed_tasks
     }
 
-    fn execute(&mut self) -> Result<FileOperationResult, FileOperationError> {
-        if let Some(e) = self.scan_for_errors() {
-            return Err(e);
-        }
-        self.tasks.iter().enumerate().for_each(|(i, task)| {
-            if let Err(e) = fs::rename(&task.from, &task.to) {
-                self.failed_tasks.push((i, e))
-            }
-        });
-        Ok(FileOperationResult::new(
-            self.tasks.len() - self.failed_tasks.len(),
-            self.failed_tasks.len(),
-        ))
+    fn get_failed_tasks_mut(&mut self) -> &mut Vec<(usize, io::Error)> {
+        &mut self.failed_tasks
     }
 }
