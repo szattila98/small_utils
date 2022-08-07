@@ -1,5 +1,6 @@
 use commons::{
-    filter_by_extension, read_files, FailedFileOperation, FileOperationError, FileOperationTask,
+    error::FileOperationError, filter_by_extension, read_files, FailedFileOperation,
+    FileOperationTask,
 };
 use std::{fs, io, path::PathBuf};
 pub struct Config {
@@ -72,11 +73,8 @@ impl Denest {
         ))
     }
 
-    pub fn get_relativized_tasks(&self) -> Vec<FileOperationTask> {
-        self.tasks
-            .iter()
-            .map(|task| task.relativize(&self.working_dir))
-            .collect()
+    pub fn get_tasks(&self) -> Vec<FileOperationTask> {
+        self.tasks.clone()
     }
 
     pub fn get_failed_tasks(&self) -> Vec<FailedFileOperation> {
@@ -90,12 +88,5 @@ impl Denest {
             }
         }
         failed_tasks
-    }
-
-    pub fn get_relativized_failed_tasks(&self) -> Vec<FailedFileOperation> {
-        self.get_failed_tasks()
-            .iter()
-            .map(|task| task.relativize(&self.working_dir))
-            .collect()
     }
 }

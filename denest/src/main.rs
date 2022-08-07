@@ -1,5 +1,5 @@
 use cli::Args;
-use commons::FileOperationError;
+use commons::{error::FileOperationError, Relativizable};
 use logic::Denest;
 use std::env;
 use structopt::StructOpt;
@@ -13,7 +13,7 @@ fn main() {
     let flush = args.do_moves;
     let mut denest = Denest::init(working_dir.clone(), args.into());
 
-    let tasks = denest.get_relativized_tasks();
+    let tasks = denest.get_tasks().relativize(&working_dir);
     if tasks.is_empty() {
         println!("No files found to be moved with these arguments!\n");
         return;
@@ -47,7 +47,8 @@ fn main() {
         } else if success_count == 0 {
             println!("All {fail_count} moved failed:");
             denest
-                .get_relativized_failed_tasks()
+                .get_failed_tasks()
+                .relativize(&working_dir)
                 .iter()
                 .for_each(|failed_task| {
                     println!("{failed_task}");
@@ -58,7 +59,8 @@ fn main() {
                 success_count, fail_count
             );
             denest
-                .get_relativized_failed_tasks()
+                .get_tasks()
+                .relativize(&working_dir)
                 .iter()
                 .for_each(|failed_task| {
                     println!("{failed_task}");

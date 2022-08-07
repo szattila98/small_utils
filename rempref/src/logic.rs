@@ -1,5 +1,6 @@
 use commons::{
-    filter_by_extension, read_files, FailedFileOperation, FileOperationError, FileOperationTask,
+    error::FileOperationError, filter_by_extension, read_files, FailedFileOperation,
+    FileOperationTask,
 };
 use std::{fs, io, path::PathBuf};
 
@@ -20,7 +21,6 @@ impl Config {
 }
 
 pub struct Rempref {
-    working_dir: PathBuf,
     tasks: Vec<FileOperationTask>,
     failed_tasks: Vec<(usize, io::Error)>,
 }
@@ -35,7 +35,6 @@ impl Rempref {
         let filtered_files = filter_by_extension(files, &config.extensions);
         let tasks = Self::create_tasks(config.prefix_length, filtered_files);
         Self {
-            working_dir,
             tasks,
             failed_tasks: vec![],
         }
@@ -78,11 +77,8 @@ impl Rempref {
         ))
     }
 
-    pub fn get_relativized_tasks(&self) -> Vec<FileOperationTask> {
-        self.tasks
-            .iter()
-            .map(|task| task.relativize(&self.working_dir))
-            .collect()
+    pub fn get_tasks(&self) -> Vec<FileOperationTask> {
+        self.tasks.clone()
     }
 
     pub fn get_failed_tasks(&self) -> Vec<FailedFileOperation> {
@@ -96,12 +92,5 @@ impl Rempref {
             }
         }
         failed_tasks
-    }
-
-    pub fn get_relativized_failed_tasks(&self) -> Vec<FailedFileOperation> {
-        self.get_failed_tasks()
-            .iter()
-            .map(|task| task.relativize(&self.working_dir))
-            .collect()
     }
 }
