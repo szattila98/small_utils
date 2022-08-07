@@ -4,7 +4,7 @@ use commons::file::{
     errors::FileOperationError,
     functions::{filter_by_extension, read_files},
     model::{FailedFileOperation, FileOperationResult, FileOperationTask},
-    traits::{FileOperation, ToFileTask},
+    traits::{FileOperation, Instantiable, ToFileTask},
 };
 
 pub struct Config {
@@ -28,8 +28,8 @@ pub struct Rempref {
     failed_tasks: Vec<(usize, io::Error)>,
 }
 
-impl Rempref {
-    pub fn new(working_dir: PathBuf, config: Config) -> Self {
+impl Instantiable<Config> for Rempref {
+    fn new(working_dir: PathBuf, config: Config) -> Self {
         let files = if config.recursive {
             read_files(&working_dir, None)
         } else {
@@ -43,7 +43,9 @@ impl Rempref {
         rempref.create_tasks(config.prefix_length, filtered_files);
         rempref
     }
+}
 
+impl Rempref {
     fn create_tasks(&mut self, prefix_length: u8, files: Vec<PathBuf>) {
         self.tasks = files.to_file_tasks(|from| {
             let mut to = from.clone();

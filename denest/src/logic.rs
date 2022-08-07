@@ -4,7 +4,7 @@ use commons::file::{
     errors::FileOperationError,
     functions::{filter_by_extension, read_files},
     model::{FailedFileOperation, FileOperationResult, FileOperationTask},
-    traits::{FileOperation, ToFileTask},
+    traits::{FileOperation, Instantiable, ToFileTask},
 };
 pub struct Config {
     extensions: Vec<String>,
@@ -23,8 +23,8 @@ pub struct Denest {
     failed_tasks: Vec<(usize, io::Error)>,
 }
 
-impl Denest {
-    pub fn new(working_dir: PathBuf, config: Config) -> Self {
+impl Instantiable<Config> for Denest {
+    fn new(working_dir: PathBuf, config: Config) -> Self {
         let files = if let Some(depth) = config.depth {
             read_files(&working_dir, Some(depth.into()))
         } else {
@@ -39,7 +39,9 @@ impl Denest {
         denest.create_tasks(filtered_files);
         denest
     }
+}
 
+impl Denest {
     fn create_tasks(&mut self, files: Vec<PathBuf>) {
         self.tasks = files.to_file_tasks(|from| {
             let mut to = self.working_dir.clone();

@@ -48,6 +48,7 @@ name = "commons"
 version = "0.2.0"
 dependencies = [
  "pathdiff",
+ "structopt",
  "thiserror",
  "walkdir",
 ]
