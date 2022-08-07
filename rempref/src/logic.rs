@@ -49,9 +49,8 @@ impl Rempref {
     fn create_tasks(&mut self, prefix_length: u8, files: Vec<PathBuf>) {
         self.tasks = files.to_file_tasks(|from| {
             let mut to = from.clone();
-            to.pop();
             let filename = &from.file_name().unwrap().to_string_lossy()[prefix_length.into()..];
-            to.push(filename);
+            to.set_file_name(filename);
             FileOperationTask::new(from, to)
         });
     }

@@ -17,9 +17,13 @@ pub trait ToFileTask: IntoIterator + Sized {
     where
         T: Fn(<Self as IntoIterator>::Item) -> FileOperationTask,
     {
-        self.into_iter()
+        let mut tasks = self
+            .into_iter()
             .map(task_generator)
-            .collect::<Vec<FileOperationTask>>()
+            .collect::<Vec<FileOperationTask>>();
+        tasks.sort_by_key(|task| task.from.display().to_string());
+        tasks.sort_by_key(|task| task.from.iter().count());
+        tasks
     }
 }
 
@@ -35,6 +39,8 @@ pub trait ScanForErrors {
 
 pub trait ExecuteTask {
     fn execute_task(task: &FileOperationTask) -> io::Result<()>;
+
+    fn finally(&self) {}
 }
 
 pub trait FileOperation<C>: Instantiate<C> + ScanForErrors + ExecuteTask {
@@ -66,6 +72,7 @@ pub trait FileOperation<C>: Instantiate<C> + ScanForErrors + ExecuteTask {
                 self.get_failed_tasks_mut().push((i, e))
             }
         });
+        self.finally();
         Ok(FileOperationResult::new(
             self.get_tasks().len() - self.get_failed_tasks().len(),
             self.get_failed_tasks().len(),
@@ -73,18 +80,23 @@ pub trait FileOperation<C>: Instantiate<C> + ScanForErrors + ExecuteTask {
     }
 }
 
-pub trait DoExec {
+pub trait InputArgs {
+    fn working_dir(&self) -> Option<PathBuf>;
+
     fn do_exec(&self) -> bool;
 }
 
 pub trait Runnable<A, C, T>
 where
-    A: StructOpt + Into<C> + DoExec,
+    A: StructOpt + Into<C> + InputArgs,
     T: Instantiate<C> + FileOperation<C>,
 {
     fn run(operation_name: &str) {
         let args = A::from_args();
-        let working_dir = env::current_dir().expect("failed to get working directory");
+        let working_dir = match args.working_dir() {
+            Some(dir) => dir,
+            None => env::current_dir().expect("failed to get working directory"),
+        };
         let flush = args.do_exec();
         let mut file_operation = T::new(working_dir.clone(), args.into());
 
@@ -101,13 +113,13 @@ where
         println!();
 
         if flush {
-            println!("\nExecuting {operation_name}s...");
+            println!("Executing {operation_name}s...");
             let res = file_operation.execute();
             if let Err(e) = &res {
                 println!("Failed to execute {operation_name}s:");
                 match e {
                     FileOperationError::FilesWouldOwerwrite(files) => {
-                        println!("{e}");
+                        println!("\n{e}");
                         files.iter().for_each(|task| {
                             println!("{}", task.relativize(&working_dir));
                         });
@@ -118,7 +130,7 @@ where
             let FileOperationResult { successful, failed } = res.unwrap();
 
             if failed == 0 {
-                println!("Execution successful, {successful} files {operation_name}d!\n");
+                println!("Execution successful, {successful} files {operation_name}d!");
             } else if successful == 0 {
                 println!("All {failed} {operation_name}s failed:");
                 file_operation

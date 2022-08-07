@@ -1,5 +1,6 @@
 use crate::logic::{Config, Denest};
-use commons::file::traits::{DoExec, Runnable};
+use commons::file::traits::{InputArgs, Runnable};
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -16,12 +17,21 @@ pub struct Args {
     /// Depth of the recursive search
     #[structopt(long)]
     pub depth: Option<u8>,
-    // pub working_dir: Option<PathBuf> // custom working directory
+    /// Cleanup the empty folders after
+    #[structopt(short, long)]
+    pub cleanup: bool,
+    /// Specify the working directory
+    #[structopt(long)]
+    pub working_dir: Option<PathBuf>,
     // pub savepoint: bool, // save a csv with information to restore the moved files
     // pub load_savepoint: bool // restore the moved files on failure
 }
 
-impl DoExec for Args {
+impl InputArgs for Args {
+    fn working_dir(&self) -> Option<PathBuf> {
+        self.working_dir.clone()
+    }
+
     fn do_exec(&self) -> bool {
         self.do_moves
     }
@@ -29,7 +39,7 @@ impl DoExec for Args {
 
 impl From<Args> for Config {
     fn from(args: Args) -> Self {
-        Config::new(args.extensions, args.depth)
+        Config::new(args.extensions, args.depth, args.cleanup)
     }
 }
 
