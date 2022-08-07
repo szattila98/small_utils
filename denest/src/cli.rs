@@ -17,6 +17,9 @@ pub struct Args {
     /// Depth of the recursive search
     #[structopt(long)]
     pub depth: Option<u8>,
+    /// Cleanup the empty folders after
+    #[structopt(short, long)]
+    pub cleanup: bool,
     /// Specify the working directory
     #[structopt(long)]
     pub working_dir: Option<PathBuf>,
@@ -36,7 +39,7 @@ impl InputArgs for Args {
 
 impl From<Args> for Config {
     fn from(args: Args) -> Self {
-        Config::new(args.extensions, args.depth)
+        Config::new(args.extensions, args.depth, args.cleanup)
     }
 }
 

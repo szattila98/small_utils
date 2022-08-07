@@ -2,18 +2,23 @@ use std::{fs, io, path::PathBuf};
 
 use commons::file::{
     errors::FileOperationError,
-    functions::{filter_by_extension, read_files},
+    functions::{filter_by_extension, read_dirs, read_files},
     model::FileOperationTask,
     traits::{ExecuteTask, FileOperation, Instantiate, ScanForErrors, ToFileTask},
 };
 pub struct Config {
     extensions: Vec<String>,
     depth: Option<u8>,
+    cleanup: bool,
 }
 
 impl Config {
-    pub fn new(extensions: Vec<String>, depth: Option<u8>) -> Self {
-        Self { extensions, depth }
+    pub fn new(extensions: Vec<String>, depth: Option<u8>, cleanup: bool) -> Self {
+        Self {
+            extensions,
+            depth,
+            cleanup,
+        }
     }
 }
 
@@ -21,6 +26,7 @@ pub struct Denest {
     working_dir: PathBuf,
     tasks: Vec<FileOperationTask>,
     failed_tasks: Vec<(usize, io::Error)>,
+    cleanup: bool,
 }
 
 impl Instantiate<Config> for Denest {
@@ -35,6 +41,7 @@ impl Instantiate<Config> for Denest {
             working_dir,
             tasks: vec![],
             failed_tasks: vec![],
+            cleanup: config.cleanup,
         };
         denest.create_tasks(filtered_files);
         denest
@@ -73,6 +80,21 @@ impl ScanForErrors for Denest {
 impl ExecuteTask for Denest {
     fn execute_task(task: &FileOperationTask) -> io::Result<()> {
         fs::rename(&task.from, &task.to)
+    }
+
+    fn finally(&self) {
+        let mut dirs = read_dirs(&self.working_dir, None);
+        dirs.reverse();
+        println!("{dirs:?}");
+        for dir in dirs {
+            let is_empty = match dir.read_dir() {
+                Ok(mut reader) => reader.next().is_none(),
+                Err(_) => false,
+            };
+            if self.cleanup && is_empty {
+                fs::remove_dir(dir);
+            }
+        }
     }
 }
 

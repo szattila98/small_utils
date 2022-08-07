@@ -39,6 +39,10 @@ pub trait ScanForErrors {
 
 pub trait ExecuteTask {
     fn execute_task(task: &FileOperationTask) -> io::Result<()>;
+
+    fn finally(&self) {
+        ()
+    }
 }
 
 pub trait FileOperation<C>: Instantiate<C> + ScanForErrors + ExecuteTask {
@@ -70,6 +74,7 @@ pub trait FileOperation<C>: Instantiate<C> + ScanForErrors + ExecuteTask {
                 self.get_failed_tasks_mut().push((i, e))
             }
         });
+        self.finally();
         Ok(FileOperationResult::new(
             self.get_tasks().len() - self.get_failed_tasks().len(),
             self.get_failed_tasks().len(),
