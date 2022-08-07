@@ -73,18 +73,23 @@ pub trait FileOperation<C>: Instantiate<C> + ScanForErrors + ExecuteTask {
     }
 }
 
-pub trait DoExec {
+pub trait InputArgs {
+    fn working_dir(&self) -> Option<PathBuf>;
+
     fn do_exec(&self) -> bool;
 }
 
 pub trait Runnable<A, C, T>
 where
-    A: StructOpt + Into<C> + DoExec,
+    A: StructOpt + Into<C> + InputArgs,
     T: Instantiate<C> + FileOperation<C>,
 {
     fn run(operation_name: &str) {
         let args = A::from_args();
-        let working_dir = env::current_dir().expect("failed to get working directory");
+        let working_dir = match args.working_dir() {
+            Some(dir) => dir,
+            None => env::current_dir().expect("failed to get working directory"),
+        };
         let flush = args.do_exec();
         let mut file_operation = T::new(working_dir.clone(), args.into());
 

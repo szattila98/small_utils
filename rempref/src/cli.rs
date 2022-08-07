@@ -1,5 +1,6 @@
 use crate::logic::{Config, Rempref};
-use commons::file::traits::{DoExec, Runnable};
+use commons::file::traits::{InputArgs, Runnable};
+use std::path::PathBuf;
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -18,7 +19,9 @@ pub struct Args {
     /// Recursively search all files in the working directory
     #[structopt(short, long)]
     pub recursive: bool,
-    // pub working_dir: Option<PathBuf> // custom working directory
+    /// Specify the working directory
+    #[structopt(long)]
+    pub working_dir: Option<PathBuf>,
     // pub savepoint: bool, // save a csv with information to restore the renames
     // pub load_savepoint: bool // restore the renames on failure
     // pub file_pattern: Option<Patterns>, // basic patterns enum with custom option
@@ -26,7 +29,11 @@ pub struct Args {
     // pub similarities: bool // search for similarities between files and create tasks based on those
 }
 
-impl DoExec for Args {
+impl InputArgs for Args {
+    fn working_dir(&self) -> Option<PathBuf> {
+        self.working_dir.clone()
+    }
+
     fn do_exec(&self) -> bool {
         self.do_renames
     }
