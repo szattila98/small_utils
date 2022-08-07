@@ -130,7 +130,7 @@ where
             let FileOperationResult { successful, failed } = res.unwrap();
 
             if failed == 0 {
-                println!("Execution successful, {successful} files {operation_name}d!\n");
+                println!("Execution successful, {successful} files {operation_name}d!");
             } else if successful == 0 {
                 println!("All {failed} {operation_name}s failed:");
                 file_operation
