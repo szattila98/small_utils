@@ -45,16 +45,17 @@ dependencies = [
 
 [[package]]
 name = "commons"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "pathdiff",
+ "structopt",
  "thiserror",
  "walkdir",
 ]
 
 [[package]]
 name = "denest"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "commons",
  "structopt",
@@ -140,7 +141,7 @@ dependencies = [
 
 [[package]]
 name = "rempref"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "commons",
  "structopt",

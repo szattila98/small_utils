@@ -1,4 +1,5 @@
-use crate::logic::Config;
+use crate::logic::{Config, Rempref};
+use commons::file::traits::{DoExec, Runnable};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -25,8 +26,18 @@ pub struct Args {
     // pub similarities: bool // search for similarities between files and create tasks based on those
 }
 
+impl DoExec for Args {
+    fn do_exec(&self) -> bool {
+        self.do_renames
+    }
+}
+
 impl From<Args> for Config {
     fn from(args: Args) -> Self {
         Config::new(args.prefix_length, args.extensions, args.recursive)
     }
 }
+
+pub struct Operation;
+
+impl Runnable<Args, Config, Rempref> for Operation {}

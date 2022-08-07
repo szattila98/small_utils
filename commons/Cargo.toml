@@ -1,6 +1,6 @@
 [package]
 name = "commons"
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 authors = ["Attila Szőke"]
 description = "Common functions and resources for workspace members"
@@ -9,3 +9,4 @@ description = "Common functions and resources for workspace members"
 walkdir = "2.3.2"
 pathdiff = "0.2.1"
 thiserror = "1.0.31"
+structopt = "0.3.26"

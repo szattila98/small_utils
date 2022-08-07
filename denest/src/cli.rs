@@ -1,4 +1,5 @@
-use crate::logic::Config;
+use crate::logic::{Config, Denest};
+use commons::file::traits::{DoExec, Runnable};
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
@@ -20,8 +21,18 @@ pub struct Args {
     // pub load_savepoint: bool // restore the moved files on failure
 }
 
+impl DoExec for Args {
+    fn do_exec(&self) -> bool {
+        self.do_moves
+    }
+}
+
 impl From<Args> for Config {
     fn from(args: Args) -> Self {
         Config::new(args.extensions, args.depth)
     }
 }
+
+pub struct Operation;
+
+impl Runnable<Args, Config, Denest> for Operation {}
