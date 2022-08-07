@@ -79,7 +79,7 @@ impl ScanForErrors for Denest {
                 };
                 if is_outer_clash && !overwritten.contains(task) {
                     overwritten.push(outer_clash_task);
-                    if !overwritten.contains(&task) {
+                    if !overwritten.contains(task) {
                         overwritten.push(task.clone());
                     }
                 }
