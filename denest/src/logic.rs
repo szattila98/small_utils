@@ -42,7 +42,6 @@ impl Denest {
 
     fn create_tasks(&mut self, files: Vec<PathBuf>) {
         self.tasks = files.to_file_tasks(|from| {
-            let from = from.clone();
             let mut to = self.working_dir.clone();
             let filename = &from.file_name().unwrap().to_string_lossy().to_string();
             to.push(filename);

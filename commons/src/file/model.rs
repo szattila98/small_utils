@@ -1,6 +1,9 @@
 use super::traits::Relativizable;
 use pathdiff::diff_paths;
-use std::{fmt::Display, path::PathBuf};
+use std::{
+    fmt::Display,
+    path::{Path, PathBuf},
+};
 
 #[derive(Debug, Clone)]
 pub struct FileOperationTask {
@@ -15,7 +18,7 @@ impl FileOperationTask {
 }
 
 impl Relativizable for FileOperationTask {
-    fn relativize(&self, working_dir: &PathBuf) -> Self {
+    fn relativize(&self, working_dir: &Path) -> Self {
         let mut task = self.clone();
         task.from = diff_paths(&task.from, working_dir).unwrap();
         task.to = diff_paths(&task.to, working_dir).unwrap();
@@ -42,7 +45,7 @@ impl FailedFileOperation {
 }
 
 impl Relativizable for FailedFileOperation {
-    fn relativize(&self, working_dir: &PathBuf) -> Self {
+    fn relativize(&self, working_dir: &Path) -> Self {
         let mut task = self.clone();
         task.file_path = diff_paths(task.file_path, working_dir).unwrap();
         task
@@ -56,7 +59,7 @@ impl Display for FailedFileOperation {
 }
 
 impl<T: Relativizable> Relativizable for Vec<T> {
-    fn relativize(&self, working_dir: &PathBuf) -> Self {
+    fn relativize(&self, working_dir: &Path) -> Self {
         self.iter()
             .map(|task| task.relativize(working_dir))
             .collect::<Vec<_>>()

@@ -2,10 +2,10 @@ use super::{
     errors::FileOperationError,
     model::{FailedFileOperation, FileOperationResult, FileOperationTask},
 };
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub trait Relativizable {
-    fn relativize(&self, working_dir: &PathBuf) -> Self;
+    fn relativize(&self, working_dir: &Path) -> Self;
 }
 
 pub trait ToFileTask: IntoIterator + Sized {
