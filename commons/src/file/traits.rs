@@ -113,13 +113,13 @@ where
         println!();
 
         if flush {
-            println!("\nExecuting {operation_name}s...");
+            println!("Executing {operation_name}s...");
             let res = file_operation.execute();
             if let Err(e) = &res {
                 println!("Failed to execute {operation_name}s:");
                 match e {
                     FileOperationError::FilesWouldOwerwrite(files) => {
-                        println!("{e}");
+                        println!("\n{e}");
                         files.iter().for_each(|task| {
                             println!("{}", task.relativize(&working_dir));
                         });

@@ -2,7 +2,7 @@ use std::{fs, io, path::PathBuf};
 
 use commons::file::{
     errors::FileOperationError,
-    functions::{filter_by_extension, read_dirs, read_files},
+    functions::{filter_by_extension, is_in_working_dir, read_dirs, read_files},
     model::FileOperationTask,
     traits::{ExecuteTask, FileOperation, Instantiate, ScanForErrors, ToFileTask},
 };
@@ -36,7 +36,10 @@ impl Instantiate<Config> for Denest {
         } else {
             read_files(&working_dir, None)
         };
-        let filtered_files = filter_by_extension(files, &config.extensions);
+        let filtered_files = filter_by_extension(files, &config.extensions)
+            .into_iter()
+            .filter(|file| is_in_working_dir(&working_dir, file))
+            .collect::<Vec<_>>();
         let mut denest = Self {
             working_dir,
             tasks: vec![],
@@ -61,11 +64,24 @@ impl Denest {
 
 impl ScanForErrors for Denest {
     fn scan_for_errors(&self) -> Option<FileOperationError> {
+        let root_files = read_files(&self.working_dir, Some(1));
         let mut overwritten = vec![];
         self.tasks.iter().for_each(|task| {
             self.tasks.iter().for_each(|other_task| {
-                if task.from != other_task.from && task.to == other_task.to {
+                let is_nested_clash = task.from != other_task.from && task.to == other_task.to;
+                let is_outer_clash = root_files.contains(&task.to);
+                if is_nested_clash && !overwritten.contains(task) {
                     overwritten.push(task.clone());
+                }
+                let outer_clash_task = FileOperationTask {
+                    from: self.working_dir.clone(),
+                    to: task.to.clone(),
+                };
+                if is_outer_clash && !overwritten.contains(task) {
+                    overwritten.push(outer_clash_task);
+                    if !overwritten.contains(&task) {
+                        overwritten.push(task.clone());
+                    }
                 }
             });
         });
