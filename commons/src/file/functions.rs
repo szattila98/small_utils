@@ -10,8 +10,8 @@ pub fn walkdir(root: &Path, depth: Option<usize>) -> Vec<PathBuf> {
     };
     dir_iter
         .into_iter()
-        .filter(|entry| entry.is_ok())
-        .map(|entry| entry.unwrap().into_path())
+        .filter_map(|entry| entry.ok())
+        .map(|entry| entry.into_path())
         .collect::<Vec<_>>()
 }
 

@@ -4,7 +4,7 @@ use commons::file::{
     errors::FileOperationError,
     functions::{filter_by_extension, read_files},
     model::{FailedFileOperation, FileOperationResult, FileOperationTask},
-    traits::{FileOperation, Instantiable, ToFileTask},
+    traits::{FileOperation, Instantiable, ScanForErrors, ToFileTask},
 };
 pub struct Config {
     extensions: Vec<String>,
@@ -52,6 +52,24 @@ impl Denest {
     }
 }
 
+impl ScanForErrors for Denest {
+    fn scan_for_errors(&self) -> Option<FileOperationError> {
+        let mut overwritten = vec![];
+        self.tasks.iter().for_each(|task| {
+            self.tasks.iter().for_each(|other_task| {
+                if task.from != other_task.from && task.to == other_task.to {
+                    overwritten.push(task.clone());
+                }
+            });
+        });
+        if !overwritten.is_empty() {
+            Some(FileOperationError::FilesWouldOwerwrite(overwritten))
+        } else {
+            None
+        }
+    }
+}
+
 impl FileOperation for Denest {
     fn get_tasks(&self) -> Vec<FileOperationTask> {
         self.tasks.clone()
@@ -71,18 +89,9 @@ impl FileOperation for Denest {
     }
 
     fn execute(&mut self) -> Result<FileOperationResult, FileOperationError> {
-        let mut overwritten = vec![];
-        self.tasks.iter().for_each(|task| {
-            self.tasks.iter().for_each(|other_task| {
-                if task.from != other_task.from && task.to == other_task.to {
-                    overwritten.push(task.clone());
-                }
-            });
-        });
-        if !overwritten.is_empty() {
-            return Err(FileOperationError::FilesWouldOwerwrite(overwritten));
+        if let Some(e) = self.scan_for_errors() {
+            return Err(e);
         }
-
         self.tasks.iter().enumerate().for_each(|(i, task)| {
             if let Err(e) = fs::rename(&task.from, &task.to) {
                 self.failed_tasks.push((i, e))

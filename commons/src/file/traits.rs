@@ -30,6 +30,10 @@ pub trait Instantiable<T> {
     fn new(working_dir: PathBuf, args: T) -> Self;
 }
 
+pub trait ScanForErrors {
+    fn scan_for_errors(&self) -> Option<FileOperationError>;
+}
+
 pub trait FileOperation {
     fn get_tasks(&self) -> Vec<FileOperationTask>;
 
@@ -51,9 +55,9 @@ where
         let args = A::from_args();
         let working_dir = env::current_dir().expect("failed to get working directory");
         let flush = args.do_exec();
-        let mut rempref = T::new(working_dir.clone(), args.into());
+        let mut file_operation = T::new(working_dir.clone(), args.into());
 
-        let tasks = rempref.get_tasks().relativize(&working_dir);
+        let tasks = file_operation.get_tasks().relativize(&working_dir);
         if tasks.is_empty() {
             println!("No files found to be {operation_name}d with these arguments!\n");
             return;
@@ -67,7 +71,7 @@ where
 
         if flush {
             println!("\nExecuting {operation_name}s...");
-            let res = rempref.execute();
+            let res = file_operation.execute();
             if let Err(e) = &res {
                 println!("Failed to execute {operation_name}s:");
                 match e {
@@ -86,7 +90,7 @@ where
                 println!("Execution successful, {successful} files {operation_name}d!\n");
             } else if successful == 0 {
                 println!("All {failed} {operation_name}s failed:");
-                rempref
+                file_operation
                     .get_failed_tasks()
                     .relativize(&working_dir)
                     .iter()
@@ -97,7 +101,7 @@ where
                 println!(
                     "{successful} {operation_name}s are successful, but {failed} {operation_name}s failed:"
                 );
-                rempref
+                file_operation
                     .get_failed_tasks()
                     .relativize(&working_dir)
                     .iter()
