@@ -74,15 +74,14 @@ impl CheckBefore for Denest {
                     if is_nested_clash && !overwritten.contains(&nested_clash_task) {
                         overwritten.push(nested_clash_task);
                     }
-
-                    let is_outer_clash = root_files.contains(&task.to);
-                    let outer_clash_task = FailedFileOperation::new(
-                        task.to.clone(),
-                        "would overwrite another moved file".to_string(),
-                    );
-                    if is_outer_clash && !overwritten.contains(&outer_clash_task) {
-                        overwritten.push(outer_clash_task);
-                    }
+                }
+                let is_outer_clash = root_files.contains(&task.to);
+                let outer_clash_task = FailedFileOperation::new(
+                    task.from.clone(),
+                    "would overwrite a file in root".to_string(),
+                );
+                if is_outer_clash && !overwritten.contains(&outer_clash_task) {
+                    overwritten.push(outer_clash_task);
                 }
             }
         }

@@ -1,3 +1,5 @@
+#![allow(clippy::derive_ord_xor_partial_ord)]
+
 use super::traits::Relativize;
 use pathdiff::diff_paths;
 use std::{

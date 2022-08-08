@@ -62,7 +62,7 @@ impl CheckBefore for Rempref {
         self.tasks.iter().for_each(|task| {
             self.tasks.iter().for_each(|other_task| {
                 let is_clash = task.from != other_task.from && task.to == other_task.to;
-                let overwrite_fail = task.to_failed("renaming this would overwrite another file");
+                let overwrite_fail = task.to_failed("would overwrite another file");
                 if task != other_task && is_clash && !overwritten.contains(&overwrite_fail) {
                     overwritten.push(overwrite_fail);
                 }
