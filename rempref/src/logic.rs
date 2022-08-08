@@ -1,10 +1,10 @@
 use std::{fs, io, path::PathBuf};
 
 use commons::file::{
-    errors::FileOperationError,
+    errors::CheckBeforeError,
     functions::{filter_by_extension, read_files},
     model::FileOperationTask,
-    traits::{ExecuteTask, FileOperation, Instantiate, ScanForErrors, ToFileTask},
+    traits::{CheckBefore, ExecuteTask, FileOperation, Instantiate, ToFileTask},
 };
 
 pub struct Config {
@@ -56,18 +56,21 @@ impl Rempref {
     }
 }
 
-impl ScanForErrors for Rempref {
-    fn scan_for_errors(&self) -> Option<FileOperationError> {
+impl CheckBefore for Rempref {
+    fn check_before(&self) -> Option<CheckBeforeError> {
         let mut overwritten = vec![];
         self.tasks.iter().for_each(|task| {
             self.tasks.iter().for_each(|other_task| {
-                if task.from != other_task.from && task.to == other_task.to {
-                    overwritten.push(task.clone());
+                let is_clash = task.from != other_task.from && task.to == other_task.to;
+                let overwrite_fail = task.to_failed("renaming this would overwrite another file");
+                if task != other_task && is_clash && !overwritten.contains(&overwrite_fail) {
+                    overwritten.push(overwrite_fail);
                 }
             });
         });
         if !overwritten.is_empty() {
-            Some(FileOperationError::FilesWouldOwerwrite(overwritten))
+            overwritten.sort();
+            Some(CheckBeforeError::FilesWouldOwerwrite(overwritten))
         } else {
             None
         }
