@@ -1,5 +1,5 @@
 use super::{
-    errors::FileOperationError,
+    errors::CheckBeforeError,
     model::{FailedFileOperation, FileOperationResult, FileOperationTask},
 };
 use std::{
@@ -21,8 +21,7 @@ pub trait ToFileTask: IntoIterator + Sized {
             .into_iter()
             .map(task_generator)
             .collect::<Vec<FileOperationTask>>();
-        tasks.sort_by_key(|task| task.from.display().to_string());
-        tasks.sort_by_key(|task| task.from.iter().count());
+        tasks.sort();
         tasks
     }
 }
@@ -33,8 +32,8 @@ pub trait Instantiate<C> {
     fn new(working_dir: PathBuf, args: C) -> Self;
 }
 
-pub trait ScanForErrors {
-    fn scan_for_errors(&self) -> Option<FileOperationError>;
+pub trait CheckBefore {
+    fn check_before(&self) -> Option<CheckBeforeError>;
 }
 
 pub trait ExecuteTask {
@@ -43,7 +42,7 @@ pub trait ExecuteTask {
     fn finally(&self) {}
 }
 
-pub trait FileOperation<C>: Instantiate<C> + ScanForErrors + ExecuteTask {
+pub trait FileOperation<C>: Instantiate<C> + CheckBefore + ExecuteTask {
     fn get_tasks(&self) -> Vec<FileOperationTask>;
 
     fn get_failed_tasks(&self) -> &Vec<(usize, io::Error)>;
@@ -63,8 +62,8 @@ pub trait FileOperation<C>: Instantiate<C> + ScanForErrors + ExecuteTask {
         failed_tasks
     }
 
-    fn execute(&mut self) -> Result<FileOperationResult, FileOperationError> {
-        if let Some(e) = self.scan_for_errors() {
+    fn execute(&mut self) -> Result<FileOperationResult, CheckBeforeError> {
+        if let Some(e) = self.check_before() {
             return Err(e);
         }
         self.get_tasks().iter().enumerate().for_each(|(i, task)| {
@@ -118,7 +117,7 @@ where
             if let Err(e) = &res {
                 println!("Failed to execute {operation_name}s:");
                 match e {
-                    FileOperationError::FilesWouldOwerwrite(files) => {
+                    CheckBeforeError::FilesWouldOwerwrite(files) => {
                         println!("\n{e}");
                         files.iter().for_each(|task| {
                             println!("{}", task.relativize(&working_dir));

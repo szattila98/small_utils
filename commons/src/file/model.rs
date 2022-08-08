@@ -1,3 +1,5 @@
+#![allow(clippy::derive_ord_xor_partial_ord)]
+
 use super::traits::Relativize;
 use pathdiff::diff_paths;
 use std::{
@@ -5,7 +7,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
-#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
 pub struct FileOperationTask {
     pub from: PathBuf,
     pub to: PathBuf,
@@ -14,6 +16,10 @@ pub struct FileOperationTask {
 impl FileOperationTask {
     pub fn new(from: PathBuf, to: PathBuf) -> Self {
         Self { from, to }
+    }
+
+    pub fn to_failed(&self, reason: &str) -> FailedFileOperation {
+        FailedFileOperation::new(self.from.clone(), reason.to_string())
     }
 }
 
@@ -32,7 +38,17 @@ impl Display for FileOperationTask {
     }
 }
 
-#[derive(Debug, Clone)]
+impl Ord for FileOperationTask {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.from
+            .display()
+            .to_string()
+            .cmp(&other.from.display().to_string())
+            .cmp(&self.from.iter().count().cmp(&other.from.iter().count()))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd)]
 pub struct FailedFileOperation {
     pub file_path: PathBuf,
     pub reason: String,
@@ -55,6 +71,22 @@ impl Relativize for FailedFileOperation {
 impl Display for FailedFileOperation {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{} => {}", self.file_path.display(), self.reason)
+    }
+}
+
+impl Ord for FailedFileOperation {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.file_path
+            .display()
+            .to_string()
+            .cmp(&other.file_path.display().to_string())
+            .cmp(
+                &self
+                    .file_path
+                    .iter()
+                    .count()
+                    .cmp(&other.file_path.iter().count()),
+            )
     }
 }
 
