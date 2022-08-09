@@ -2,9 +2,9 @@ use std::{fs, io, path::PathBuf};
 
 use commons::file::{
     errors::CheckBeforeError,
-    functions::{filter_by_extension, is_in_working_dir, read_dirs, read_files},
+    functions::{filter_by_extension, is_in_working_dir, read_dirs, read_files, walkdir},
     model::FileOperationTask,
-    traits::{CheckBefore, ExecuteTask, FileOperation, Instantiate, ToFailed, ToFileTask},
+    traits::{ExecuteTask, FileOperation, Instantiate, ToFailed, ToFileTask},
 };
 pub struct Config {
     extensions: Vec<String>,
@@ -62,9 +62,9 @@ impl Denest {
     }
 }
 
-impl CheckBefore for Denest {
-    fn check_before(&self) -> Option<CheckBeforeError> {
-        let root_files = read_files(&self.working_dir, Some(1));
+impl ExecuteTask for Denest {
+    fn check_before_execution(&self) -> Option<CheckBeforeError> {
+        let root_files = walkdir(&self.working_dir, Some(1));
         let mut would_overwrite = vec![];
         for task in self.tasks.iter() {
             for other_task in self.tasks.iter() {
@@ -72,10 +72,10 @@ impl CheckBefore for Denest {
                     let is_nested_clash = task.from != other_task.from && task.to == other_task.to;
                     let is_outer_clash = root_files.contains(&task.to);
                     let mut clashing_task_reason = vec![];
-                    if dbg!(is_nested_clash) {
+                    if is_nested_clash {
                         clashing_task_reason.push("would overwrite another moved file");
                     }
-                    if dbg!(is_outer_clash) {
+                    if is_outer_clash {
                         clashing_task_reason.push("would overwrite a file in root");
                     }
                     if !clashing_task_reason.is_empty() {
@@ -100,20 +100,21 @@ impl CheckBefore for Denest {
             None
         }
     }
-}
 
-impl ExecuteTask for Denest {
     fn execute_task(task: &FileOperationTask) -> io::Result<()> {
         fs::rename(&task.from, &task.to)
     }
 
-    fn finally(&self) {
+    fn after_execute(&self) -> Result<bool, ()> {
         if self.cleanup {
             let mut dirs = read_dirs(&self.working_dir, None);
             dirs.reverse();
             dirs.into_iter().for_each(|dir| {
                 let _ = fs::remove_dir(dir);
             });
+            Ok(true)
+        } else {
+            Ok(false)
         }
     }
 }

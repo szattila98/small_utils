@@ -5,5 +5,5 @@ mod cli;
 mod logic;
 
 fn main() {
-    Operation::run("move");
+    Operation::run();
 }

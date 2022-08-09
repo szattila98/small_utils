@@ -1,3 +1,5 @@
+#![allow(clippy::result_unit_err)]
+
 use super::{
     errors::CheckBeforeError,
     model::{FailedFileOperation, FileOperationResult, FileOperationTask},
@@ -36,17 +38,23 @@ pub trait Instantiate<C> {
     fn new(working_dir: PathBuf, args: C) -> Self;
 }
 
-pub trait CheckBefore {
-    fn check_before(&self) -> Option<CheckBeforeError>;
-}
-
 pub trait ExecuteTask {
+    fn check_before_execution(&self) -> Option<CheckBeforeError> {
+        None
+    }
+
+    fn before_execute(&self) -> Result<bool, ()> {
+        Ok(false)
+    }
+
     fn execute_task(task: &FileOperationTask) -> io::Result<()>;
 
-    fn finally(&self) {}
+    fn after_execute(&self) -> Result<bool, ()> {
+        Ok(false)
+    }
 }
 
-pub trait FileOperation<C>: Instantiate<C> + CheckBefore + ExecuteTask {
+pub trait FileOperation<C>: Instantiate<C> + ExecuteTask {
     fn get_tasks(&self) -> Vec<FileOperationTask>;
 
     fn get_failed_tasks(&self) -> &Vec<(usize, io::Error)>;
@@ -66,20 +74,16 @@ pub trait FileOperation<C>: Instantiate<C> + CheckBefore + ExecuteTask {
         failed_tasks
     }
 
-    fn execute(&mut self) -> Result<FileOperationResult, CheckBeforeError> {
-        if let Some(e) = self.check_before() {
-            return Err(e);
-        }
+    fn execute(&mut self) -> FileOperationResult {
         self.get_tasks().iter().enumerate().for_each(|(i, task)| {
             if let Err(e) = Self::execute_task(task) {
                 self.get_failed_tasks_mut().push((i, e))
             }
         });
-        self.finally();
-        Ok(FileOperationResult::new(
+        FileOperationResult::new(
             self.get_tasks().len() - self.get_failed_tasks().len(),
             self.get_failed_tasks().len(),
-        ))
+        )
     }
 }
 
@@ -94,7 +98,11 @@ where
     A: StructOpt + Into<C> + InputArgs,
     T: Instantiate<C> + FileOperation<C>,
 {
-    fn run(operation_name: &str) {
+    fn name() -> String;
+
+    fn verb() -> String;
+
+    fn run() {
         let args = A::from_args();
         let working_dir = match args.working_dir() {
             Some(dir) => dir,
@@ -103,9 +111,12 @@ where
         let flush = args.do_exec();
         let mut file_operation = T::new(working_dir.clone(), args.into());
 
+        println!("{}", Self::name());
+        let operation_name = Self::verb();
+
         let tasks = file_operation.get_tasks().relativize(&working_dir);
         if tasks.is_empty() {
-            println!("No files found to be {operation_name}d with these arguments!\n");
+            println!("\nNo files found to be {operation_name}d with these arguments!\n");
             return;
         }
 
@@ -113,25 +124,41 @@ where
         tasks.iter().for_each(|task| {
             println!("{task}");
         });
-        println!();
+
+        println!("\nRunning checks before execution...");
+        if let Some(e) = file_operation.check_before_execution() {
+            println!("Failed to execute {operation_name}s:");
+            match &e {
+                CheckBeforeError::FilesWouldOwerwrite(files) => {
+                    println!("{e}\n");
+                    files.iter().for_each(|task| {
+                        println!("{}", task.relativize(&working_dir));
+                    });
+                }
+            }
+            return;
+        } else {
+            println!("All checks passed!");
+        }
 
         if flush {
-            println!("Executing {operation_name}s...");
-            let res = file_operation.execute();
-            if let Err(e) = &res {
-                println!("Failed to execute {operation_name}s:");
-                match e {
-                    CheckBeforeError::FilesWouldOwerwrite(files) => {
-                        println!("\n{e}");
-                        files.iter().for_each(|task| {
-                            println!("{}", task.relativize(&working_dir));
-                        });
+            println!("\nBefore execution running...");
+            match file_operation.before_execute() {
+                Ok(ran) => {
+                    if ran {
+                        println!("Before execution ran successfully!");
+                    } else {
+                        println!("No before exectution ran!");
                     }
                 }
-                return;
-            }
-            let FileOperationResult { successful, failed } = res.unwrap();
+                Err(_) => {
+                    println!("Before execution failed!");
+                    return;
+                }
+            };
 
+            println!("\nExecuting {operation_name}s...");
+            let FileOperationResult { successful, failed } = file_operation.execute();
             if failed == 0 {
                 println!("Execution successful, {successful} files {operation_name}d!");
             } else if successful == 0 {
@@ -155,7 +182,20 @@ where
                         println!("{failed_task}");
                     });
             }
-            println!()
+
+            println!("\nAfter execution running...");
+            match file_operation.after_execute() {
+                Ok(ran) => {
+                    if ran {
+                        println!("After execution ran successfully!");
+                    } else {
+                        println!("No after exectution ran!");
+                    }
+                }
+                Err(_) => {
+                    println!("After execution failed!");
+                }
+            };
         } else {
             println!("Run with -d flag to execute {operation_name}s\n");
         }
