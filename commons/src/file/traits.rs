@@ -28,6 +28,10 @@ pub trait ToFileTask: IntoIterator + Sized {
 
 impl ToFileTask for Vec<PathBuf> {}
 
+pub trait ToFailed {
+    fn to_failed(&self, reason: &str) -> FailedFileOperation;
+}
+
 pub trait Instantiate<C> {
     fn new(working_dir: PathBuf, args: C) -> Self;
 }

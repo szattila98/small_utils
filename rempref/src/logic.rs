@@ -4,7 +4,7 @@ use commons::file::{
     errors::CheckBeforeError,
     functions::{filter_by_extension, read_files},
     model::FileOperationTask,
-    traits::{CheckBefore, ExecuteTask, FileOperation, Instantiate, ToFileTask},
+    traits::{CheckBefore, ExecuteTask, FileOperation, Instantiate, ToFailed, ToFileTask},
 };
 
 pub struct Config {
@@ -58,19 +58,19 @@ impl Rempref {
 
 impl CheckBefore for Rempref {
     fn check_before(&self) -> Option<CheckBeforeError> {
-        let mut overwritten = vec![];
+        let mut would_overwrite = vec![];
         self.tasks.iter().for_each(|task| {
             self.tasks.iter().for_each(|other_task| {
                 let is_clash = task.from != other_task.from && task.to == other_task.to;
-                let overwrite_fail = task.to_failed("would overwrite another file");
-                if task != other_task && is_clash && !overwritten.contains(&overwrite_fail) {
-                    overwritten.push(overwrite_fail);
+                let overwrite_fail = task.to_failed("would overwrite another renamed file");
+                if task != other_task && is_clash && !would_overwrite.contains(&overwrite_fail) {
+                    would_overwrite.push(overwrite_fail);
                 }
             });
         });
-        if !overwritten.is_empty() {
-            overwritten.sort();
-            Some(CheckBeforeError::FilesWouldOwerwrite(overwritten))
+        if !would_overwrite.is_empty() {
+            would_overwrite.sort();
+            Some(CheckBeforeError::FilesWouldOwerwrite(would_overwrite))
         } else {
             None
         }
