@@ -47,4 +47,12 @@ impl From<Args> for Config {
 
 pub struct Operation;
 
-impl Runnable<Args, Config, Rempref> for Operation {}
+impl Runnable<Args, Config, Rempref> for Operation {
+    fn name() -> String {
+        "=== Rempref ===".to_string()
+    }
+
+    fn verb() -> String {
+        "rename".to_string()
+    }
+}

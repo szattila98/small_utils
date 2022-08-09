@@ -2,9 +2,9 @@ use std::{fs, io, path::PathBuf};
 
 use commons::file::{
     errors::CheckBeforeError,
-    functions::{filter_by_extension, is_in_working_dir, read_dirs, read_files},
-    model::{FailedFileOperation, FileOperationTask},
-    traits::{CheckBefore, ExecuteTask, FileOperation, Instantiate, ToFileTask},
+    functions::{filter_by_extension, is_in_working_dir, read_dirs, read_files, walkdir},
+    model::FileOperationTask,
+    traits::{ExecuteTask, FileOperation, Instantiate, ToFailed, ToFileTask},
 };
 pub struct Config {
     extensions: Vec<String>,
@@ -62,50 +62,59 @@ impl Denest {
     }
 }
 
-impl CheckBefore for Denest {
-    fn check_before(&self) -> Option<CheckBeforeError> {
-        let root_files = read_files(&self.working_dir, Some(1));
-        let mut overwritten: Vec<FailedFileOperation> = vec![];
+impl ExecuteTask for Denest {
+    fn check_before_execution(&self) -> Option<CheckBeforeError> {
+        let root_files = walkdir(&self.working_dir, Some(1));
+        let mut would_overwrite = vec![];
         for task in self.tasks.iter() {
             for other_task in self.tasks.iter() {
-                if task != other_task {
+                if task != other_task || self.tasks.len() == 1 {
                     let is_nested_clash = task.from != other_task.from && task.to == other_task.to;
-                    let nested_clash_task = task.to_failed("would overwrite another moved file");
-                    if is_nested_clash && !overwritten.contains(&nested_clash_task) {
-                        overwritten.push(nested_clash_task);
+                    let is_outer_clash = root_files.contains(&task.to);
+                    let mut clashing_task_reason = vec![];
+                    if is_nested_clash {
+                        clashing_task_reason.push("would overwrite another moved file");
+                    }
+                    if is_outer_clash {
+                        clashing_task_reason.push("would overwrite a file in root");
+                    }
+                    if !clashing_task_reason.is_empty() {
+                        let fail = task.to_failed(
+                            format!("\n- {}", &clashing_task_reason.join("\n- ")).as_str(),
+                        );
+                        would_overwrite.push(fail);
                     }
                 }
-                let is_outer_clash = root_files.contains(&task.to);
-                let outer_clash_task = FailedFileOperation::new(
-                    task.from.clone(),
-                    "would overwrite a file in root".to_string(),
-                );
-                if is_outer_clash && !overwritten.contains(&outer_clash_task) {
-                    overwritten.push(outer_clash_task);
-                }
+            }
+            let root_file = task
+                .to
+                .to_failed("would be overwritten in root by the move of a nested file");
+            if root_files.contains(&task.to) && !would_overwrite.contains(&root_file) {
+                would_overwrite.push(root_file);
             }
         }
-        if !overwritten.is_empty() {
-            overwritten.sort();
-            Some(CheckBeforeError::FilesWouldOwerwrite(overwritten))
+        if !would_overwrite.is_empty() {
+            would_overwrite.sort();
+            Some(CheckBeforeError::FilesWouldOwerwrite(would_overwrite))
         } else {
             None
         }
     }
-}
 
-impl ExecuteTask for Denest {
     fn execute_task(task: &FileOperationTask) -> io::Result<()> {
         fs::rename(&task.from, &task.to)
     }
 
-    fn finally(&self) {
+    fn after_execute(&self) -> Result<bool, ()> {
         if self.cleanup {
             let mut dirs = read_dirs(&self.working_dir, None);
             dirs.reverse();
             dirs.into_iter().for_each(|dir| {
                 let _ = fs::remove_dir(dir);
             });
+            Ok(true)
+        } else {
+            Ok(false)
         }
     }
 }

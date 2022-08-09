@@ -45,4 +45,12 @@ impl From<Args> for Config {
 
 pub struct Operation;
 
-impl Runnable<Args, Config, Denest> for Operation {}
+impl Runnable<Args, Config, Denest> for Operation {
+    fn name() -> String {
+        "=== Denest ===".to_string()
+    }
+
+    fn verb() -> String {
+        "move".to_string()
+    }
+}

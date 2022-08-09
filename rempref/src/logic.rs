@@ -2,9 +2,9 @@ use std::{fs, io, path::PathBuf};
 
 use commons::file::{
     errors::CheckBeforeError,
-    functions::{filter_by_extension, read_files},
+    functions::{filter_by_extension, read_files, walkdir},
     model::FileOperationTask,
-    traits::{CheckBefore, ExecuteTask, FileOperation, Instantiate, ToFileTask},
+    traits::{ExecuteTask, FileOperation, Instantiate, ToFailed, ToFileTask},
 };
 
 pub struct Config {
@@ -24,6 +24,7 @@ impl Config {
 }
 
 pub struct Rempref {
+    working_dir: PathBuf,
     tasks: Vec<FileOperationTask>,
     failed_tasks: Vec<(usize, io::Error)>,
 }
@@ -37,6 +38,7 @@ impl Instantiate<Config> for Rempref {
         };
         let filtered_files = filter_by_extension(files, &config.extensions);
         let mut rempref = Self {
+            working_dir,
             tasks: vec![],
             failed_tasks: vec![],
         };
@@ -56,28 +58,45 @@ impl Rempref {
     }
 }
 
-impl CheckBefore for Rempref {
-    fn check_before(&self) -> Option<CheckBeforeError> {
-        let mut overwritten = vec![];
-        self.tasks.iter().for_each(|task| {
-            self.tasks.iter().for_each(|other_task| {
-                let is_clash = task.from != other_task.from && task.to == other_task.to;
-                let overwrite_fail = task.to_failed("would overwrite another file");
-                if task != other_task && is_clash && !overwritten.contains(&overwrite_fail) {
-                    overwritten.push(overwrite_fail);
+impl ExecuteTask for Rempref {
+    fn check_before_execution(&self) -> Option<CheckBeforeError> {
+        let root_files = walkdir(&self.working_dir, Some(1));
+        let mut would_overwrite = vec![];
+        for task in self.tasks.iter() {
+            for other_task in self.tasks.iter() {
+                if task != other_task || self.tasks.len() == 1 {
+                    let is_nested_clash = task.from != other_task.from && task.to == other_task.to;
+                    let is_outer_clash = root_files.contains(&task.to);
+                    let mut clashing_task_reason = vec![];
+                    if is_nested_clash {
+                        clashing_task_reason.push("would overwrite another renamed file");
+                    }
+                    if is_outer_clash {
+                        clashing_task_reason.push("renaming would overwrite a file in root");
+                    }
+                    if !clashing_task_reason.is_empty() {
+                        let fail = task.to_failed(
+                            format!("\n- {}", &clashing_task_reason.join("\n- ")).as_str(),
+                        );
+                        would_overwrite.push(fail);
+                    }
                 }
-            });
-        });
-        if !overwritten.is_empty() {
-            overwritten.sort();
-            Some(CheckBeforeError::FilesWouldOwerwrite(overwritten))
+            }
+            let root_file = task
+                .to
+                .to_failed("would be overwritten in root by the rename of a file");
+            if root_files.contains(&task.to) && !would_overwrite.contains(&root_file) {
+                would_overwrite.push(root_file);
+            }
+        }
+        if !would_overwrite.is_empty() {
+            would_overwrite.sort();
+            Some(CheckBeforeError::FilesWouldOwerwrite(would_overwrite))
         } else {
             None
         }
     }
-}
 
-impl ExecuteTask for Rempref {
     fn execute_task(task: &FileOperationTask) -> io::Result<()> {
         fs::rename(&task.from, &task.to)
     }

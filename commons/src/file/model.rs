@@ -1,6 +1,6 @@
 #![allow(clippy::derive_ord_xor_partial_ord)]
 
-use super::traits::Relativize;
+use super::traits::{Relativize, ToFailed};
 use pathdiff::diff_paths;
 use std::{
     fmt::Display,
@@ -17,8 +17,10 @@ impl FileOperationTask {
     pub fn new(from: PathBuf, to: PathBuf) -> Self {
         Self { from, to }
     }
+}
 
-    pub fn to_failed(&self, reason: &str) -> FailedFileOperation {
+impl ToFailed for FileOperationTask {
+    fn to_failed(&self, reason: &str) -> FailedFileOperation {
         FailedFileOperation::new(self.from.clone(), reason.to_string())
     }
 }
@@ -90,14 +92,6 @@ impl Ord for FailedFileOperation {
     }
 }
 
-impl<T: Relativize> Relativize for Vec<T> {
-    fn relativize(&self, working_dir: &Path) -> Self {
-        self.iter()
-            .map(|task| task.relativize(working_dir))
-            .collect::<Vec<_>>()
-    }
-}
-
 pub struct FileOperationResult {
     pub successful: usize,
     pub failed: usize,
@@ -106,5 +100,19 @@ pub struct FileOperationResult {
 impl FileOperationResult {
     pub fn new(successful: usize, failed: usize) -> Self {
         Self { successful, failed }
+    }
+}
+
+impl<T: Relativize> Relativize for Vec<T> {
+    fn relativize(&self, working_dir: &Path) -> Self {
+        self.iter()
+            .map(|task| task.relativize(working_dir))
+            .collect::<Vec<_>>()
+    }
+}
+
+impl ToFailed for PathBuf {
+    fn to_failed(&self, reason: &str) -> FailedFileOperation {
+        FailedFileOperation::new(self.clone(), reason.to_string())
     }
 }
