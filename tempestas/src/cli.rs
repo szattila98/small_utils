@@ -28,17 +28,17 @@ pub enum Args {
 }
 
 pub trait Forecast {
-    fn show(&self);
+    fn print(&self);
 }
 
 impl Forecast for WeatherData<DailyUnits, DailyData> {
-    fn show(&self) {
+    fn print(&self) {
         todo!()
     }
 }
 
 impl Forecast for WeatherData<HourlyUnits, HourlyData> {
-    fn show(&self) {
+    fn print(&self) {
         todo!()
     }
 }

@@ -90,5 +90,5 @@ fn main() {
             Box::new(weather_data)
         }
     };
-    forecast.show();
+    forecast.print();
 }
