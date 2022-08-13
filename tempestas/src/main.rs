@@ -37,35 +37,52 @@ fn main() {
         "You are located in {}, {} in {}, according to your ip address",
         ip_data.city_name, ip_data.country_name, ip_data.continent_name
     );
-    println!("This may be a little off, but should'nt be too far off\n");
-    println!("Getting weather data based on this...");
+    println!("This may be a little off, but shouldn't be too far off\n");
+    println!("Getting weather data based on your location...");
     let forecast: Box<dyn Forecast> = match args {
         Args::Summary {
             day_no,
             start_date,
             end_date,
         } => {
+            let current_date = chrono::Local::today().naive_local();
             let (start_date, end_date) = if let Some(day_no) = day_no {
-                let start_date = chrono::Local::today().format("%Y-%m-%d");
-                let end_date = chrono::Local::today()
-                    .add(Duration::days(day_no.into()))
-                    .format("%Y-%m-%d");
+                let start_date = current_date;
+                let end_date = current_date.add(Duration::days(day_no.into()));
                 (start_date, end_date)
             } else if let Some(start_date) = start_date {
                 (
-                    start_date.format("%Y-%m-%d"),
-                    end_date.expect("end date should have been specified, and structopt should not let it not be - contact the nearest comissar to fix this").format("%Y-%m-%d"),
+                    start_date,
+                    end_date.expect("end date should have been specified, and structopt should not let it not be - contact the nearest comissar to fix this"),
                 )
             } else {
-                (
-                    chrono::Local::today().format("%Y-%m-%d"),
-                    chrono::Local::today().format("%Y-%m-%d"),
-                )
+                (current_date, current_date)
             };
+
+            if start_date > end_date {
+                println!("Start date must be before the end date");
+                return;
+            }
+            if end_date - start_date > Duration::days(7) {
+                println!("The specified interval should not be more than 8 days");
+                return;
+            }
+            if current_date > start_date && current_date - start_date > Duration::days(60) {
+                println!(
+                    "Only two months of data is available from the past, search for more recent dates"
+                );
+                return;
+            }
+            if current_date < start_date && end_date - current_date > Duration::days(7) {
+                println!("Only 7 days of forecast is available not a day more, I am not an oracle");
+                return;
+            }
+
             let url = format!(
                 "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&timezone={}&start_date={}&end_date={}&daily={}", 
-                ip_data.latitude, ip_data.longitude, ip_data.timezone, start_date, end_date, DAILY_VARS.join(",")
+                ip_data.latitude, ip_data.longitude, ip_data.timezone, start_date.format("%Y-%m-%d"), end_date.format("%Y-%m-%d"), DAILY_VARS.join(",")
             );
+            // println!("{}", url);
             let weather_data = get(url)
                 .expect("could not get weather data")
                 .json::<WeatherData<DailyUnits, DailyData>>()
@@ -83,6 +100,7 @@ fn main() {
                     "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&start_date={}&end_date={}&hourly={}",
                     ip_data.latitude, ip_data.longitude, formatted, formatted, HOURLY_VARS.join(",")
                 );
+            // println!("{}", url);
             let weather_data = get(url)
                 .expect("could not get weather data")
                 .json::<WeatherData<HourlyUnits, HourlyData>>()
@@ -91,4 +109,5 @@ fn main() {
         }
     };
     forecast.print();
+    println!("\nHave a nice day!")
 }
