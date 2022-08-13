@@ -1,6 +1,8 @@
 use chrono::NaiveDate;
 use structopt::StructOpt;
 
+use crate::model::{DailyData, DailyUnits, HourlyData, HourlyUnits, WeatherData};
+
 #[derive(Debug, StructOpt)]
 #[structopt(name = "tempestas")]
 /// A weather forecast CLI
@@ -23,4 +25,20 @@ pub enum Args {
         #[structopt(short, long)]
         specific_date: Option<NaiveDate>,
     },
+}
+
+pub trait Forecast {
+    fn show(&self);
+}
+
+impl Forecast for WeatherData<DailyUnits, DailyData> {
+    fn show(&self) {
+        todo!()
+    }
+}
+
+impl Forecast for WeatherData<HourlyUnits, HourlyData> {
+    fn show(&self) {
+        todo!()
+    }
 }

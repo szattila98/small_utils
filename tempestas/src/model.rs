@@ -1,7 +1,6 @@
-use chrono::{DateTime, NaiveDateTime};
-use serde::{Deserialize, Deserializer};
+use serde::Deserialize;
 
-#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct WeatherData<U, D> {
     pub latitude: f64,
     pub longitude: f64,
@@ -18,19 +17,19 @@ pub struct WeatherData<U, D> {
     pub data: D,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct DailyUnits {
     pub time: String,
-    pub temperature_2m_max: String,
     pub temperature_2m_min: String,
-    pub rain_sum: String,
-    pub windspeed_10m_max: String,
+    pub temperature_2m_max: String,
+    pub precipitation_sum: String,
     pub precipitation_hours: String,
-    pub snowfall_sum: String,
-    pub showers_sum: String,
+    pub windspeed_10m_max: String,
+    pub sunrise: String,
+    pub sunset: String,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct HourlyUnits {
     pub time: String,
     pub temperature_2m: String,
@@ -39,22 +38,22 @@ pub struct HourlyUnits {
     pub precipitation: String,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct DailyData {
     pub time: Vec<String>,
-    pub temperature_2m_max: Vec<f64>,
     pub temperature_2m_min: Vec<f64>,
-    pub rain_sum: Vec<f64>,
-    pub windspeed_10m_max: Vec<f64>,
+    pub temperature_2m_max: Vec<f64>,
+    pub precipitation_sum: Vec<f64>,
     pub precipitation_hours: Vec<f64>,
-    pub snowfall_sum: Vec<f64>,
-    pub showers_sum: Vec<f64>,
+    pub windspeed_10m_max: Vec<f64>,
+    pub sunrise: Vec<String>,
+    pub sunset: Vec<String>,
 }
 
-#[derive(Default, Debug, Clone, PartialEq, Deserialize)]
+#[derive(Debug, Deserialize)]
 
 pub struct HourlyData {
-    pub time: Vec<NaiveDateTime>,
+    pub time: Vec<String>,
     pub temperature_2m: Vec<f64>,
     pub cloudcover: Vec<f64>,
     pub windspeed_10m: Vec<f64>,

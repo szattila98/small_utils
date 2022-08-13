@@ -1,10 +1,11 @@
 use crate::{
-    cli::Args,
+    cli::{Args, Forecast},
     location::get_geoip_data,
-    model::{HourlyData, HourlyUnits, WeatherData},
+    model::{DailyData, DailyUnits, HourlyData, HourlyUnits, WeatherData},
 };
-use chrono::Local;
+use chrono::{Duration, Local};
 use reqwest::blocking::get;
+use std::ops::Add;
 use structopt::StructOpt;
 
 pub mod cli;
@@ -29,13 +30,48 @@ const DAILY_VARS: &[&str] = &[
 
 fn main() {
     let args = Args::from_args();
+    println!("Tempestas\n");
+    println!("Locating you in the world by your ip address...");
     let ip_data = get_geoip_data();
-    match args {
+    println!(
+        "You are located in {}, {} in {}, according to your ip address",
+        ip_data.city_name, ip_data.country_name, ip_data.continent_name
+    );
+    println!("This may be a little off, but should'nt be too far off\n");
+    println!("Getting weather data based on this...");
+    let forecast: Box<dyn Forecast> = match args {
         Args::Summary {
             day_no,
             start_date,
             end_date,
-        } => todo!(),
+        } => {
+            let (start_date, end_date) = if let Some(day_no) = day_no {
+                let start_date = chrono::Local::today().format("%Y-%m-%d");
+                let end_date = chrono::Local::today()
+                    .add(Duration::days(day_no.into()))
+                    .format("%Y-%m-%d");
+                (start_date, end_date)
+            } else if let Some(start_date) = start_date {
+                (
+                    start_date.format("%Y-%m-%d"),
+                    end_date.expect("end date should have been specified, and structopt should not let it not be - contact the nearest comissar to fix this").format("%Y-%m-%d"),
+                )
+            } else {
+                (
+                    chrono::Local::today().format("%Y-%m-%d"),
+                    chrono::Local::today().format("%Y-%m-%d"),
+                )
+            };
+            let url = format!(
+                "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&timezone={}&start_date={}&end_date={}&daily={}", 
+                ip_data.latitude, ip_data.longitude, ip_data.timezone, start_date, end_date, DAILY_VARS.join(",")
+            );
+            let weather_data = get(url)
+                .expect("could not get weather data")
+                .json::<WeatherData<DailyUnits, DailyData>>()
+                .expect("could not parse response");
+            Box::new(weather_data)
+        }
         Args::Detailed { specific_date } => {
             let date = match specific_date {
                 Some(date) => date,
@@ -44,28 +80,15 @@ fn main() {
             let formatted = date.format("%Y-%m-%d");
             let url =
                 format!(
-                    "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&hourly={}&start_date={}&end_date={}",
-                    ip_data.latitude, ip_data.longitude, HOURLY_VARS.join(","), formatted, formatted
+                    "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&start_date={}&end_date={}&hourly={}",
+                    ip_data.latitude, ip_data.longitude, formatted, formatted, HOURLY_VARS.join(",")
                 );
             let weather_data = get(url)
                 .expect("could not get weather data")
                 .json::<WeatherData<HourlyUnits, HourlyData>>()
                 .expect("could not parse response");
-            println!("{:#?}", weather_data);
+            Box::new(weather_data)
         }
-    }
-
-    // let start_date = chrono::Local::today().format("%Y-%m-%d");
-    // let end_date = chrono::Local::today()
-    //     .add(Duration::days(2))
-    //     .format("%Y-%m-%d");
-    // let url = format!("https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&timezone={}&start_date={}&end_date={}&daily=temperature_2m_max,temperature_2m_min,rain_sum,windspeed_10m_max,precipitation_hours,snowfall_sum,showers_sum", ip_data.latitude, ip_data.longitude, ip_data.timezone, start_date, end_date);
-    // let weather_data = get(url)
-    //     .expect("could not get weather data")
-    //     .json::<WeatherData>()
-    //     .expect("could not parse response");
-
-    // println!("{args:?}");
-    // println!("body = {:?}", weather_data);
-    // println!("{}", chrono::Local::now());
+    };
+    forecast.show();
 }
