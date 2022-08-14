@@ -38,14 +38,14 @@ fn main() {
         ip_data.city_name, ip_data.country_name, ip_data.continent_name
     );
     println!("This may be a little off, but shouldn't be too far off\n");
-    println!("Getting weather data based on your location...");
+    println!("Getting weather data based on your location");
+    let current_date = chrono::Local::today().naive_local();
     let forecast: Box<dyn Forecast> = match args {
         Args::Summary {
             day_no,
             start_date,
             end_date,
         } => {
-            let current_date = chrono::Local::today().naive_local();
             let (start_date, end_date) = if let Some(day_no) = day_no {
                 let start_date = current_date;
                 let end_date = current_date.add(Duration::days(day_no.into()));
@@ -77,6 +77,11 @@ fn main() {
                 println!("Only 7 days of forecast is available not a day more, I am not an oracle");
                 return;
             }
+            if start_date == end_date {
+                println!("for {}...", start_date);
+            } else {
+                println!("for the {} - {} interval...", start_date, end_date);
+            }
 
             let url = format!(
                 "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&timezone={}&start_date={}&end_date={}&daily={}", 
@@ -89,12 +94,26 @@ fn main() {
                 .expect("could not parse response");
             Box::new(weather_data)
         }
+
         Args::Detailed { specific_date } => {
-            let date = match specific_date {
+            let specific_date = match specific_date {
                 Some(date) => date,
                 None => Local::now().naive_local().date(),
             };
-            let formatted = date.format("%Y-%m-%d");
+            let formatted = specific_date.format("%Y-%m-%d");
+
+            if current_date > specific_date && current_date - specific_date > Duration::days(60) {
+                println!(
+                    "Only two months of data is available from the past, search for more recent dates"
+                );
+                return;
+            }
+            if current_date < specific_date && specific_date - current_date > Duration::days(7) {
+                println!("Only 7 days of forecast is available not a day more, I am not an oracle");
+                return;
+            }
+            println!("for {}...", specific_date);
+
             let url =
                 format!(
                     "https://api.open-meteo.com/v1/forecast?latitude={}&longitude={}&start_date={}&end_date={}&hourly={}",
