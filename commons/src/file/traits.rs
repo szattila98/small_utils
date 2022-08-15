@@ -129,7 +129,7 @@ where
         if let Some(e) = file_operation.check_before_execution() {
             println!("Failed to execute {operation_name}s:");
             match &e {
-                CheckBeforeError::FilesWouldOwerwrite(files) => {
+                CheckBeforeError::FilesWouldOverwrite(files) => {
                     println!("{e}\n");
                     files.iter().for_each(|task| {
                         println!("{}", task.relativize(&working_dir));
