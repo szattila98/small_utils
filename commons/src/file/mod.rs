@@ -3,7 +3,6 @@ pub mod model;
 pub mod traits;
 
 use pathdiff::diff_paths;
-use std::fs;
 use std::path::{Path, PathBuf};
 use walkdir::WalkDir;
 
@@ -57,7 +56,7 @@ pub fn is_in_working_dir(working_dir: &PathBuf, file: &PathBuf) -> bool {
 
 #[cfg(windows)]
 pub fn is_hidden(file: &PathBuf) -> bool {
-    use std::os::windows::prelude::*;
+    use std::{fs, os::windows::prelude::*};
     let metadata =
         fs::metadata(file).expect("file metadata could not be queried on 'file-hidden-check'");
     let attributes = metadata.file_attributes();
@@ -65,9 +64,9 @@ pub fn is_hidden(file: &PathBuf) -> bool {
 }
 
 #[cfg(unix)]
-pub fn is_hidden(file: &PathBuf) -> bool {
+pub fn is_hidden(file: &Path) -> bool {
     file.file_name()
         .expect("file-name could not be queried on 'file-hidden-check'")
         .to_string_lossy()
-        .starts_with(".")
+        .starts_with('.')
 }
