@@ -2,9 +2,10 @@ use std::{fs, io, path::PathBuf};
 
 use commons::file::{
     errors::CheckBeforeError,
-    functions::{filter_by_extension, is_in_working_dir, read_dirs, read_files, walkdir},
+    is_hidden,
     model::FileOperationTask,
     traits::{ExecuteTask, FileOperation, Instantiate, ToFailed, ToFileTask},
+    {filter_by_extension, is_in_working_dir, read_dirs, read_files, walkdir},
 };
 pub struct Config {
     extensions: Vec<String>,
@@ -38,7 +39,7 @@ impl Instantiate<Config> for Denest {
         };
         let filtered_files = filter_by_extension(files, &config.extensions)
             .into_iter()
-            .filter(|file| is_in_working_dir(&working_dir, file))
+            .filter(|file| is_in_working_dir(&working_dir, file) && !is_hidden(file))
             .collect::<Vec<_>>();
         let mut denest = Self {
             working_dir,
@@ -95,7 +96,7 @@ impl ExecuteTask for Denest {
         }
         if !would_overwrite.is_empty() {
             would_overwrite.sort();
-            Some(CheckBeforeError::FilesWouldOwerwrite(would_overwrite))
+            Some(CheckBeforeError::FilesWouldOverwrite(would_overwrite))
         } else {
             None
         }

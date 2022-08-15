@@ -1,11 +1,11 @@
-use std::{fs, io, path::PathBuf};
-
 use commons::file::{
     errors::CheckBeforeError,
-    functions::{filter_by_extension, read_files, walkdir},
+    is_hidden,
     model::FileOperationTask,
     traits::{ExecuteTask, FileOperation, Instantiate, ToFailed, ToFileTask},
+    {filter_by_extension, read_files, walkdir},
 };
+use std::{fs, io, path::PathBuf};
 
 pub struct Config {
     prefix_length: u8,
@@ -36,7 +36,10 @@ impl Instantiate<Config> for Rempref {
         } else {
             read_files(&working_dir, Some(1))
         };
-        let filtered_files = filter_by_extension(files, &config.extensions);
+        let filtered_files = filter_by_extension(files, &config.extensions)
+            .into_iter()
+            .filter(|file| !is_hidden(file))
+            .collect::<Vec<_>>();
         let mut rempref = Self {
             working_dir,
             tasks: vec![],
@@ -91,7 +94,7 @@ impl ExecuteTask for Rempref {
         }
         if !would_overwrite.is_empty() {
             would_overwrite.sort();
-            Some(CheckBeforeError::FilesWouldOwerwrite(would_overwrite))
+            Some(CheckBeforeError::FilesWouldOverwrite(would_overwrite))
         } else {
             None
         }
