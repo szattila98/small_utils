@@ -33,7 +33,7 @@ pub fn read_dirs(root: &Path, depth: Option<usize>) -> Vec<PathBuf> {
         .collect::<Vec<_>>()
 }
 
-pub fn filter_by_extension(files: Vec<PathBuf>, extensions: &Vec<String>) -> Vec<PathBuf> {
+pub fn filter_by_extension(files: Vec<PathBuf>, extensions: &[String]) -> Vec<PathBuf> {
     if extensions.is_empty() {
         return files;
     }
