@@ -8,3 +8,4 @@ description = "A file prefix removal utility"
 [dependencies]
 commons = { path = "../commons" }
 structopt = "0.3.26"
+rayon = "1.10.0"

@@ -5,6 +5,7 @@ use commons::file::{
     traits::{ExecuteTask, FileOperation, Instantiate, ToFailed, ToFileTask},
     {filter_by_extension, read_files, walkdir},
 };
+use rayon::iter::{IntoParallelIterator, IntoParallelRefIterator, ParallelIterator};
 use std::{fs, io, path::PathBuf};
 
 pub struct Config {
@@ -37,7 +38,7 @@ impl Instantiate<Config> for Rempref {
             read_files(&working_dir, Some(1))
         };
         let filtered_files = filter_by_extension(files, &config.extensions)
-            .into_iter()
+            .into_par_iter()
             .filter(|file| !is_hidden(file))
             .collect::<Vec<_>>();
         let mut rempref = Self {
@@ -64,37 +65,58 @@ impl Rempref {
 impl ExecuteTask for Rempref {
     fn check_before_execution(&self) -> Option<CheckBeforeError> {
         let root_files = walkdir(&self.working_dir, Some(1));
-        let mut would_overwrite = vec![];
-        for task in self.tasks.iter() {
-            for other_task in self.tasks.iter() {
-                if task != other_task || self.tasks.len() == 1 {
-                    let is_nested_clash = task.from != other_task.from && task.to == other_task.to;
-                    let is_outer_clash = root_files.contains(&task.to);
-                    let mut clashing_task_reason = vec![];
-                    if is_nested_clash {
-                        clashing_task_reason.push("would overwrite another renamed file");
-                    }
-                    if is_outer_clash {
-                        clashing_task_reason.push("renaming would overwrite a file in root");
-                    }
-                    if !clashing_task_reason.is_empty() {
-                        let fail = task.to_failed(
-                            format!("\n- {}", &clashing_task_reason.join("\n- ")).as_str(),
-                        );
-                        would_overwrite.push(fail);
+
+        let would_overwrite: Vec<_> = self
+            .tasks
+            .par_iter()
+            .flat_map(|task| {
+                let mut clashing_task_reason = vec![];
+
+                let task_clashes: Vec<_> = self
+                    .tasks
+                    .par_iter()
+                    .filter_map(|other_task| {
+                        if task != other_task || self.tasks.len() == 1 {
+                            let is_nested_clash =
+                                task.from != other_task.from && task.to == other_task.to;
+                            let is_outer_clash = root_files.contains(&task.to);
+                            let mut reasons = vec![];
+                            if is_nested_clash {
+                                reasons.push("would overwrite another renamed file");
+                            }
+                            if is_outer_clash {
+                                reasons.push("renaming would overwrite a file in root");
+                            }
+                            if !reasons.is_empty() {
+                                let fail = task.to_failed(&format!("\n- {}", reasons.join("\n- ")));
+                                return Some(fail);
+                            }
+                        }
+                        None
+                    })
+                    .collect();
+
+                clashing_task_reason.extend(task_clashes);
+
+                // Check if the task conflicts with root files
+                if root_files.contains(&task.to) {
+                    let root_file =
+                        task.to_failed("would be overwritten in root by the rename of a file");
+                    if !clashing_task_reason.contains(&root_file) {
+                        clashing_task_reason.push(root_file);
                     }
                 }
-            }
-            let root_file = task
-                .to
-                .to_failed("would be overwritten in root by the rename of a file");
-            if root_files.contains(&task.to) && !would_overwrite.contains(&root_file) {
-                would_overwrite.push(root_file);
-            }
-        }
+
+                clashing_task_reason
+            })
+            .collect();
+
         if !would_overwrite.is_empty() {
-            would_overwrite.sort();
-            Some(CheckBeforeError::FilesWouldOverwrite(would_overwrite))
+            let mut would_overwrite_sorted = would_overwrite.clone();
+            would_overwrite_sorted.sort();
+            Some(CheckBeforeError::FilesWouldOverwrite(
+                would_overwrite_sorted,
+            ))
         } else {
             None
         }
