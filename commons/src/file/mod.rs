@@ -42,7 +42,7 @@ pub fn filter_by_extension(files: Vec<PathBuf>, extensions: &Vec<String>) -> Vec
         .filter_map(|file| {
             extensions
                 .contains(&file.extension()?.to_string_lossy().to_string())
-                .then(|| file)
+                .then_some(file)
         })
         .collect::<Vec<_>>()
 }
